@@ -1,0 +1,496 @@
+{
+  "kategorien": [
+    {
+      "name": "Beispiel: Allgemeinwissen",
+      "fragen": [
+        {
+          "frage": "Wie heisst die Hauptstadt von Frankreich?",
+          "antwort": "Paris"
+        },
+        {
+          "frage": "Welcher Planet ist der Sonne am naechsten?",
+          "antwort": "Merkur"
+        },
+        {
+          "frage": "Wie viele Kontinente gibt es?",
+          "antwort": "Sieben"
+        },
+        {
+          "frage": "Welches Tier ist das groesste Landtier?",
+          "antwort": "Der Afrikanische Elefant"
+        },
+        {
+          "frage": "In welchem Jahr fiel die Berliner Mauer?",
+          "antwort": "1989"
+        },
+        {
+          "frage": "Wie heisst das chemische Symbol fuer Gold?",
+          "antwort": "Au"
+        },
+        {
+          "frage": "Wer malte die Mona Lisa?",
+          "antwort": "Leonardo da Vinci"
+        },
+        {
+          "frage": "Welcher ist der laengste Fluss Europas?",
+          "antwort": "Die Wolga"
+        },
+        {
+          "frage": "Wie viele Knochen hat ein erwachsener Mensch?",
+          "antwort": "206"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 2",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 2)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 2)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 2)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 2)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 2)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 2)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 2)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 2)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 2)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 3",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 3)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 3)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 3)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 3)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 3)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 3)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 3)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 3)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 3)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 4",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 4)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 4)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 4)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 4)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 4)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 4)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 4)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 4)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 4)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 5",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 5)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 5)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 5)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 5)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 5)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 5)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 5)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 5)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 5)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 6",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 6)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 6)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 6)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 6)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 6)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 6)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 6)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 6)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 6)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 7",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 7)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 7)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 7)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 7)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 7)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 7)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 7)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 7)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 7)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 8",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 8)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 8)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 8)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 8)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 8)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 8)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 8)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 8)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 8)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 9",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 9)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 9)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 9)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 9)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 9)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 9)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 9)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 9)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 9)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 10",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 10)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 10)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 10)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 10)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 10)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 10)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 10)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 10)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 10)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 11",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 11)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 11)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 11)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 11)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 11)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 11)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 11)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 11)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 11)",
+          "antwort": "Antwort"
+        }
+      ]
+    },
+    {
+      "name": "Kategorie 12",
+      "fragen": [
+        {
+          "frage": "Frage fuer 200 Punkte (Kategorie 12)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 300 Punkte (Kategorie 12)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 400 Punkte (Kategorie 12)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 500 Punkte (Kategorie 12)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 600 Punkte (Kategorie 12)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 700 Punkte (Kategorie 12)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 800 Punkte (Kategorie 12)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 900 Punkte (Kategorie 12)",
+          "antwort": "Antwort"
+        },
+        {
+          "frage": "Frage fuer 1000 Punkte (Kategorie 12)",
+          "antwort": "Antwort"
+        }
+      ]
+    }
+  ]
+}
