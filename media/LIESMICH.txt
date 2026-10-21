@@ -1,0 +1,2 @@
+Hier kommen Bilder und Sounds fuer die Fragen hinein (z. B. intro1.mp3, ort1.jpg).
+In fragen.json traegst du dann "bild": "ort1.jpg" bzw. "sound": "intro1.mp3" ein.
