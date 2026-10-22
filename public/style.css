@@ -102,7 +102,7 @@ button.chip{box-shadow:none}
 .frame::before{top:6px} .frame::after{bottom:6px;animation-delay:.7s}
 @keyframes bulbs{0%{opacity:1}50%{opacity:.55}}
 .boardwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-.board{display:grid;grid-template-columns:repeat(var(--cols),minmax(76px,1fr));gap:5px;min-width:min-content}
+.board{display:grid;grid-template-columns:repeat(var(--cols),minmax(68px,1fr));gap:5px;min-width:min-content}
 .cat{
   background:linear-gradient(var(--cream),#e6c88a);color:var(--ink);border-radius:8px 8px 3px 3px;
   font-family:var(--cond);font-weight:700;font-size:clamp(.85rem,1.2vw,1.2rem);line-height:1.05;text-align:center;
@@ -110,7 +110,7 @@ button.chip{box-shadow:none}
   box-shadow:inset 0 -3px 0 rgba(0,0,0,.15)
 }
 .tile{
-  position:relative;height:clamp(48px,8.5vh,88px);border-radius:6px;padding:0;font-family:var(--display);font-weight:400;
+  position:relative;height:clamp(34px,calc((100vh - 300px) / var(--rows,8)),88px);border-radius:6px;padding:0;font-family:var(--display);font-weight:400;
   font-size:clamp(1.1rem,2.2vw,2.1rem);color:var(--gold);letter-spacing:.02em;
   background:linear-gradient(#8a1830,var(--curtain) 60%,var(--curtain-d));
   box-shadow:inset 0 0 0 2px rgba(245,185,46,.55),inset 0 2px 0 rgba(255,255,255,.18),0 3px 0 #1d0309;
@@ -217,6 +217,46 @@ button.chip{box-shadow:none}
 @keyframes rise{from{height:0!important;opacity:0}}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:9;width:100%;height:100%}
 .banner{background:var(--curtain);color:var(--cream);text-align:center;padding:8px;position:relative;z-index:2}
+
+/* Spieler-Menue des Hosts (statt prompt) */
+.pmenu{margin:0 18px 8px;padding:12px 14px;border-radius:14px;background:rgba(13,15,46,.95);border:2px solid var(--gold);box-shadow:0 0 22px rgba(245,185,46,.35);animation:pop .3s cubic-bezier(.2,1.3,.4,1)}
+.pmenu h3{margin:0 0 8px;font-family:var(--display);font-weight:400;color:var(--gold-l);font-size:1.05rem}
+.pmenu .row{margin-top:8px}
+.pmenu .row>span{color:var(--muted);min-width:90px}
+.pmenu input[type=number]{width:110px;padding:.45em .7em;font-size:1rem}
+.pmenu button{padding:.45em .8em;font-size:.9rem}
+
+/* Reveal: Pixel-Canvas und Stufenanzeige */
+.card canvas.pix{display:block;max-width:100%;max-height:44vh;width:auto;height:auto;margin:10px auto;border-radius:10px;border:3px solid var(--gold-d);image-rendering:pixelated;background:#000}
+.stages{display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.stages .st{padding:4px 10px;border-radius:99px;font-weight:700;font-size:.9rem;background:rgba(0,0,0,.35);color:var(--muted);border:1px solid rgba(255,241,208,.15)}
+.stages .st.on{background:var(--gold);color:var(--ink);border-color:var(--gold-l)}
+.stages .st.past{color:var(--cream);border-color:rgba(245,185,46,.4)}
+
+/* Finale */
+.finlogo{font-family:var(--display);font-size:clamp(2.6rem,8vw,5rem);line-height:1;text-align:center;margin:30px 0 6px;color:var(--gold-l);
+  text-shadow:0 4px 0 var(--gold-d),0 0 40px rgba(245,185,46,.6);animation:shineText 2.5s ease-in-out infinite alternate}
+@keyframes shineText{to{text-shadow:0 4px 0 var(--gold-d),0 0 70px rgba(255,224,138,.9)}}
+.finwrap{max-width:900px;margin:0 auto;padding:10px 18px 30px}
+.finlist{list-style:none;margin:14px 0 0;padding:0}
+.finlist li{display:grid;grid-template-columns:1.3fr 2fr 1fr auto;gap:12px;align-items:center;padding:10px 14px;border-radius:10px;margin-top:6px;background:rgba(0,0,0,.3);font-size:1.1rem}
+.finlist li.cur{border:2px solid var(--gold);box-shadow:0 0 16px rgba(245,185,46,.4);background:rgba(245,185,46,.08)}
+.finlist li.ok{background:rgba(65,194,122,.18)} .finlist li.bad{background:rgba(224,68,58,.18)}
+.finlist li .nm{font-weight:700} .finlist li .an{font-family:var(--cond);font-weight:700;font-size:1.25rem;overflow-wrap:anywhere}
+.finlist li .wg{font-family:var(--display);color:var(--gold-l);text-align:right}
+.finlist li .rs{font-size:1.4rem;width:1.4em;text-align:center}
+.finlist li .hid{color:var(--muted);font-style:italic;font-family:var(--body);font-size:1rem;font-weight:400}
+.wagerbox{margin-top:14px;padding:14px;border-radius:12px;background:rgba(0,0,0,.35)}
+.wagerbox input{font-size:1.4rem;max-width:220px}
+.wagerbox .range{width:100%;max-width:420px;accent-color:var(--gold);margin-top:8px}
+
+/* Awards auf der Siegerehrung */
+.awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:18px;text-align:left}
+.award{padding:12px 14px;border-radius:12px;background:rgba(13,15,46,.85);border:2px solid rgba(245,185,46,.4)}
+.award .t{font-family:var(--display);font-weight:400;color:var(--gold);font-size:.95rem}
+.award .n{font-weight:700;font-size:1.1rem;margin:4px 0 2px;overflow-wrap:anywhere}
+.award .v{color:var(--muted);font-size:.9rem}
+
 @media (max-width:760px){.cols{grid-template-columns:1fr}}
 @media (max-width:640px){.card{padding:18px}.frame{margin:6px 6px 16px;padding:24px 8px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}

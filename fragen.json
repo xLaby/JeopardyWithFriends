@@ -1,5 +1,15 @@
 {
   "titel": "Quiz Show",
+  "werte": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800
+  ],
   "kategorien": [
     {
       "name": "Geographie",
@@ -44,41 +54,56 @@
         {
           "frage": "Welcher Film beginnt mit diesem Intro?",
           "antwort": "Star Wars",
-          "sound": "intro1.mp3"
+          "sound": "intro1.mp3",
+          "typ": "reveal"
         },
         {
           "frage": "Frage für 200 Punkte (Was höre ich da?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "sound": ""
         },
         {
           "frage": "Frage für 300 Punkte (Was höre ich da?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "sound": ""
         },
         {
           "frage": "Frage für 400 Punkte (Was höre ich da?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "sound": ""
         },
         {
           "frage": "Frage für 500 Punkte (Was höre ich da?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "sound": ""
         },
         {
           "frage": "Frage für 600 Punkte (Was höre ich da?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "sound": ""
         },
         {
           "frage": "Frage für 700 Punkte (Was höre ich da?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "sound": ""
         },
         {
           "frage": "Frage für 800 Punkte (Was höre ich da?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "sound": ""
         }
       ]
@@ -151,41 +176,57 @@
           "frage": "In welchem Land steht dieses Gebäude?",
           "antwort": "Island",
           "bild": "ort1.jpg",
-          "antwortBild": "ort1-karte.jpg"
+          "antwortBild": "ort1-karte.jpg",
+          "typ": "reveal",
+          "dauer": 20
         },
         {
           "frage": "Frage für 200 Punkte (Wo sind wir?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "bild": ""
         },
         {
           "frage": "Frage für 300 Punkte (Wo sind wir?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "bild": ""
         },
         {
           "frage": "Frage für 400 Punkte (Wo sind wir?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "bild": ""
         },
         {
           "frage": "Frage für 500 Punkte (Wo sind wir?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "bild": ""
         },
         {
           "frage": "Frage für 600 Punkte (Wo sind wir?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "bild": ""
         },
         {
           "frage": "Frage für 700 Punkte (Wo sind wir?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "bild": ""
         },
         {
           "frage": "Frage für 800 Punkte (Wo sind wir?)",
           "antwort": "Antwort",
+          "typ": "reveal",
+          "dauer": 20,
           "bild": ""
         }
       ]
@@ -539,5 +580,30 @@
         }
       ]
     }
-  ]
+  ],
+  "finale": {
+    "name": "Finale",
+    "fragen": [
+      {
+        "frage": "Wie viele Bundesländer hat Deutschland?",
+        "antwort": "16"
+      },
+      {
+        "frage": "Finalfrage 2",
+        "antwort": "Antwort"
+      },
+      {
+        "frage": "Finalfrage 3",
+        "antwort": "Antwort"
+      },
+      {
+        "frage": "Finalfrage 4",
+        "antwort": "Antwort"
+      },
+      {
+        "frage": "Finalfrage 5",
+        "antwort": "Antwort"
+      }
+    ]
+  }
 }
