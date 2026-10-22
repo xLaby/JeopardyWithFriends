@@ -18,6 +18,10 @@ const REVEAL_MULT = [2, 1.5, 1.25, 1];   // Punktfaktor je Reveal-Stufe (frueh b
 const SOUND_STAGES = [2, 5, 10, 0];      // Sekunden pro Sound-Stufe, 0 = komplett
 const WAGER_TIME = 45;         // Sekunden fuer den Finale-Einsatz
 const MAX_UPLOAD = 40 * 1024 * 1024;   // Sofort-Paket: eingebettete Medien insgesamt
+const STREAK_EVERY = 3;        // alle drei richtigen Antworten in Folge gibt es einen Bonus (kleinster Feldwert)
+const INTERLUDE_MS = 9000;     // Zwischenstand nach einer abgeraeumten Kategorie
+const COLORS = ['#e0443a', '#f5b92e', '#41c27a', '#3b9ddd', '#a86be0', '#ff9ad5', '#ff8a3c', '#2ec4b6', '#c9b8a0', '#8ff0b8', '#ffe08a', '#6b8cff'];
+const AVATARS = ['🦊', '🐼', '🦁', '🐸', '🐙', '🦄', '🐧', '🐯', '🐨', '🦉', '🐵', '🐺', '🦖', '🐢', '🦋', '🐝', '🍕', '🎸', '🚀', '🎲', '🧙', '🤖', '👽', '🍩'];
 const rooms = new Map();
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -168,7 +172,48 @@ const qOf = (room, ci, ri) =>
   Number.isInteger(ci) && Number.isInteger(ri) && room.data.kategorien[ci] ? room.data.kategorien[ci].fragen[ri] : undefined;
 const curQ = (room, cur) => cur.typ === 'finale' ? room.data.finale.fragen[cur.idx] : qOf(room, cur.cat, cur.row);
 const player = (room, id) => room.players.find(p => p.id === id);
-const newStats = () => ({ buzz: 0, fastest: null, correct: 0, wrong: 0, jokers: 0, bestGain: 0, guessWins: 0 });
+const newStats = () => ({ buzz: 0, fastest: null, correct: 0, wrong: 0, jokers: 0, bestGain: 0, guessWins: 0, bestStreak: 0 });
+// Farbe/Avatar pruefen; ungueltig -> erste freie Farbe bzw. zufaelliger Avatar
+function pickLook(room, color, avatar) {
+  let c = Number(color), a = Number(avatar);
+  if (!Number.isInteger(c) || c < 0 || c >= COLORS.length) {
+    const used = new Set(room.players.map(p => p.color));
+    c = COLORS.findIndex((_, i) => !used.has(i));
+    if (c < 0) c = crypto.randomInt(COLORS.length);
+  }
+  if (!Number.isInteger(a) || a < 0 || a >= AVATARS.length) a = crypto.randomInt(AVATARS.length);
+  return { color: c, avatar: a };
+}
+// Kurze Einblendungen fuer alle (Serie, Comeback)
+function notice(room, kind, text) {
+  room.notices.push({ id: crypto.randomBytes(3).toString('hex'), kind, text, at: Date.now() });
+  room.notices = room.notices.slice(-5);
+}
+// Rueckgaengig: Zustand vor einer Wertung sichern (Punkte, Joker, Board, aktuelle Frage)
+function snapshot(room, label) {
+  const cur = room.current;
+  return {
+    label,
+    players: room.players.map(p => ({ id: p.id, score: p.score, jokers: [...p.jokers], pendingPick: p.pendingPick, stats: { ...p.stats }, streak: p.streak })),
+    used: new Set(room.used), picker: room.picker, phase: room.phase, done: room.done,
+    fin: room.fin ? { ...room.fin } : null,
+    current: cur ? structuredClone({ ...cur, t: {}, window: null }) : null
+  };
+}
+function restore(room, snap) {
+  clearTimers(room.current);
+  clearTimeout(room.timer); room.interlude = null;
+  snap.players.forEach(sp => {
+    const p = player(room, sp.id);
+    if (p) { p.score = sp.score; p.jokers = [...sp.jokers]; p.pendingPick = sp.pendingPick; p.stats = { ...sp.stats }; p.streak = sp.streak; }
+  });
+  room.used = new Set(snap.used); room.picker = snap.picker; room.phase = snap.phase; room.done = snap.done;
+  room.fin = snap.fin ? { ...snap.fin } : null;
+  const c = snap.current ? structuredClone(snap.current) : null;
+  if (c) { c.t = {}; c.window = null; c.deadline = 0; c.timeUp = false; c.audio = { ...c.audio, on: false }; }
+  room.current = c;
+  room.undo = null;
+}
 
 function tileState(room, ci, ri) {
   if (!qOf(room, ci, ri)) return 'none';
@@ -249,6 +294,18 @@ function resolveRisk(room, cur) {
   cur.riskDone = true;
   if (!cur.winners.includes(j.by)) award(room, cur, j.by, -V(room)[cur.row] * 2, 'risk');
 }
+// Richtige Antwort: Serie zaehlen, alle STREAK_EVERY gibt es einen Bonus
+function onCorrect(room, cur, pid) {
+  const p = player(room, pid);
+  if (!p) return;
+  p.streak++;
+  if (p.streak > p.stats.bestStreak) p.stats.bestStreak = p.streak;
+  if (p.streak % STREAK_EVERY === 0) {
+    const bonus = V(room)[0];
+    award(room, cur, pid, bonus, 'streak');
+    notice(room, 'streak', `🔥 ${p.name}: ${p.streak} richtige in Folge, +${bonus} Bonus!`);
+  }
+}
 function grantReward(room, cur) {
   if (!cur.winners.length || !room.jokers.has(key(cur.cat, cur.row))) return;
   cur.reward = true;
@@ -265,13 +322,15 @@ function startTile(room, cat, row) {
   if (room.phase !== 'game' || room.current) return;
   if (tileState(room, cat, row) !== 'free') return;
   const q = qOf(room, cat, row);
+  room.undo = null; room.resolveSnap = null;
+  clearTimeout(room.timer); room.interlude = null;
   room.current = {
     cat, row, typ: q.typ, state: 'reading',
     buzzer: null, locked: new Set(), window: null, deadline: 0, timeUp: false,
     joker: null, riskDone: false, awards: [], winners: [], result: null, reward: false,
     audio: { n: 0, on: false },
     guesses: {}, order: [], revealed: 0,
-    openedAt: 0, stage: 0,
+    openedAt: 0, stage: 0, buzzes: [],
     t: {}
   };
   emitState(room);
@@ -286,6 +345,7 @@ function resolveBuzz(room) {
   const cur = room.current;
   if (!cur || !cur.window || cur.state !== 'open') return;
   const best = cur.window.candidates.sort((a, b) => a.elapsed - b.elapsed)[0];
+  cur.buzzes = cur.window.candidates.map(c => ({ pid: c.pid, elapsed: c.elapsed }));
   if (cur.typ === 'reveal' && !curQ(room, cur).sound) cur.stage = revealStage(room, cur, cur.window.at);
   cur.window = null;
   if (!best) return emitState(room);
@@ -316,6 +376,7 @@ function applyWinners(room, cur, winners) {
   winners.forEach(id => {
     award(room, cur, id, gainFor(room, cur, id), 'correct');
     const p = player(room, id); if (p) { p.stats.correct++; p.stats.guessWins++; }
+    onCorrect(room, cur, id);
   });
   toReveal(room, cur, winners.length ? 'correct' : 'none');
   grantReward(room, cur);
@@ -347,6 +408,7 @@ function finaleNext(room) {
   const fin = room.data.finale;
   if (room.current && room.current.state !== 'reveal') return;
   clearTimers(room.current);
+  room.undo = null;
   room.fin.idx++;
   if (room.fin.idx >= fin.fragen.length) { room.current = null; room.phase = 'end'; return emitState(room); }
   const cur = room.current = {
@@ -420,6 +482,7 @@ function computeAwards(room) {
   best(s => s.buzz, 'Dauerdrücker', v => v + ' Mal gebuzzert');
   best(s => s.guessWins, 'Schätzkönig', v => v + ' Schätzfragen gewonnen');
   best(s => s.jokers, 'Jokerfreund', v => v + ' Joker eingesetzt');
+  best(s => s.bestStreak >= STREAK_EVERY ? s.bestStreak : 0, 'Serientäter', v => v + ' richtige in Folge');
   best(s => s.wrong, 'Mut zur Lücke', v => v + ' Fehlversuche');
   return out;
 }
@@ -464,7 +527,8 @@ function stateFor(room, forHost) {
       state: cur.state, buzzer: cur.buzzer, pending: !!cur.window, locked: [...cur.locked],
       used: cur.joker, audio: cur.audio, timeUp: cur.timeUp,
       left: cur.deadline && (cur.state === 'buzzed' || cur.state === 'open') ? Math.max(0, cur.deadline - Date.now()) : null,
-      result: cur.result, winners: cur.winners, reward: cur.reward, awards: cur.awards
+      result: cur.result, winners: cur.winners, reward: cur.reward, awards: cur.awards,
+      buzzes: cur.buzzes
     };
     if (cur.typ === 'reveal') current.reveal = {
       mode: q.sound ? 'sound' : 'bild', stage: cur.stage, dauer: q.dauer,
@@ -486,7 +550,13 @@ function stateFor(room, forHost) {
   return {
     code: room.code, phase: room.phase, picker: room.picker, titel: room.data.titel,
     hostOnline: !!room.hostSocket, settings: room.settings,
-    players: room.players.map(p => ({ id: p.id, name: p.name, score: p.score, connected: p.connected, jokers: p.jokers, pending: p.pendingPick })),
+    players: room.players.map(p => ({ id: p.id, name: p.name, score: p.score, connected: p.connected, jokers: p.jokers, pending: p.pendingPick,
+      color: COLORS[p.color], avatar: AVATARS[p.avatar], streak: p.streak })),
+    looks: { colors: COLORS, avatars: AVATARS },
+    done: room.done, total: room.data.kategorien.reduce((a, c) => a + c.fragen.length, 0),
+    interlude: room.interlude ? { ...room.interlude, left: Math.max(0, room.interlude.until - Date.now()) } : null,
+    notices: room.notices.filter(n => Date.now() - n.at < 12000).map(n => ({ id: n.id, kind: n.kind, text: n.text, age: Date.now() - n.at })),
+    canUndo: forHost && room.undo ? room.undo.label : null,
     cats: room.data.kategorien.map(c => c.name),
     values: V(room),
     tiles: room.data.kategorien.map((c, ci) => V(room).map((_, ri) => tileState(room, ci, ri))),
@@ -505,7 +575,7 @@ function emitState(room) {
 
 setInterval(() => {
   const limit = Date.now() - 6 * 60 * 60 * 1000;
-  for (const [code, r] of rooms) if (r.touched < limit) { clearTimers(r.current); rooms.delete(code); }
+  for (const [code, r] of rooms) if (r.touched < limit) { clearTimers(r.current); clearTimeout(r.timer); rooms.delete(code); }
 }, 10 * 60 * 1000);
 
 // ---------- Sockets ----------
@@ -527,7 +597,8 @@ io.on('connection', sock => {
     const room = {
       code, hostToken: token(), hostSocket: sock.id, phase: 'lobby',
       data, players: [], used: new Set(), fixed: fixedJokers(data), jokers: new Set(), current: null,
-      picker: null, fin: null, blobs: new Map(), settings: { joker: 5, answerTime: 10, guessTime: 90 }, touched: Date.now()
+      picker: null, fin: null, blobs: new Map(), settings: { joker: 5, answerTime: 10, guessTime: 90, comeback: 20 }, touched: Date.now(),
+      done: 0, interlude: null, timer: null, notices: [], undo: null, resolveSnap: null
     };
     rooms.set(code, room);
     sock.data = { code, role: 'host' };
@@ -561,8 +632,9 @@ io.on('connection', sock => {
     const room = hostRoom();
     if (!room || room.phase !== 'lobby') return;
     const num = (v, min, max) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : null; };
-    const j = num(s.joker, 0, MAX_CATS * MAX_ROWS), a = num(s.answerTime, 3, 60), g = num(s.guessTime, 10, 600);
+    const j = num(s.joker, 0, MAX_CATS * MAX_ROWS), a = num(s.answerTime, 3, 60), g = num(s.guessTime, 10, 600), cb = num(s.comeback, 0, 200);
     if (j !== null) room.settings.joker = j;
+    if (cb !== null) room.settings.comeback = cb;
     if (a !== null) room.settings.answerTime = a;
     if (g !== null) room.settings.guessTime = g;
     emitState(room);
@@ -596,6 +668,7 @@ io.on('connection', sock => {
     const room = hostRoom();
     if (!room || room.phase !== 'lobby') return;
     room.phase = 'game';
+    room.done = 0; room.undo = null; room.notices = [];
     assignJokers(room);
     const first = room.players.find(p => p.connected) || room.players[0];
     room.picker = first ? first.id : null;
@@ -752,23 +825,27 @@ io.on('connection', sock => {
     if (!cur) return;
     if (cur.typ === 'finale') {
       if (cur.state !== 'review' || cur.review.stage !== 1) return;
+      room.undo = snapshot(room, 'Finale: Wertung für ' + (player(room, cur.review.order[cur.review.i]) || {}).name);
       finJudge(room, cur, !!correct);
       return emitState(room);
     }
     if ((cur.typ !== 'buzzer' && cur.typ !== 'reveal') || cur.state !== 'buzzed') return;
     const p = player(room, cur.buzzer);
     const value = V(room)[cur.row];
+    if (!p) { clearTimeout(cur.t.answer); cur.timeUp = false; cur.deadline = 0; cur.buzzer = null; cur.state = 'open'; return emitState(room); }
+    room.undo = snapshot(room, (correct ? 'Richtig' : 'Falsch') + ' für ' + p.name);
     clearTimeout(cur.t.answer); cur.timeUp = false; cur.deadline = 0;
-    if (!p) { cur.buzzer = null; cur.state = 'open'; return emitState(room); }
     if (correct) {
       award(room, cur, p.id, gainFor(room, cur, p.id), 'correct');
       p.stats.correct++;
       cur.winners = [p.id];
+      onCorrect(room, cur, p.id);
       toReveal(room, cur, 'correct');
       grantReward(room, cur);
     } else {
       award(room, cur, p.id, -penaltyFor(cur, p.id, value), 'wrong');
       p.stats.wrong++;
+      p.streak = 0;
       if (cur.joker && cur.joker.by === p.id && cur.joker.type === 'risk') cur.riskDone = true;
       cur.locked.add(p.id);
       cur.buzzer = null;
@@ -790,6 +867,7 @@ io.on('connection', sock => {
       return emitState(room);
     }
     if (cur.state === 'reveal' || cur.state === 'review') return;
+    room.undo = snapshot(room, cur.state === 'reading' ? 'Frage übersprungen' : cur.typ === 'schaetzen' ? 'Zeit beendet' : 'Niemand weiß es');
     if (cur.state === 'reading') {
       if (cur.joker) {
         const p = player(room, cur.joker.by);
@@ -820,6 +898,7 @@ io.on('connection', sock => {
     const room = hostRoom();
     const cur = room && room.current;
     if (!cur || cur.typ !== 'schaetzen' || cur.state !== 'review') return;
+    room.undo = room.resolveSnap = snapshot(room, 'Auflösung der Schätzfrage');
     cur.revealed = cur.order.length;
     resolveGuess(room, cur);
     emitState(room);
@@ -829,11 +908,13 @@ io.on('connection', sock => {
   sock.on('host:setWinner', ({ id } = {}) => {
     const room = hostRoom();
     const cur = room && room.current;
-    if (!cur || cur.typ !== 'schaetzen' || cur.state !== 'reveal' || !cur.guesses[id]) return;
-    cur.awards.forEach(a => { const p = player(room, a.pid); if (p) p.score -= a.delta; });
-    cur.winners.forEach(w => { const p = player(room, w); if (p) { p.stats.correct--; p.stats.guessWins--; if (cur.reward && p.pendingPick > 0) p.pendingPick--; } });
-    cur.awards = []; cur.reward = false; cur.riskDone = false;
-    applyWinners(room, cur, [id]);
+    if (!cur || cur.typ !== 'schaetzen' || cur.state !== 'reveal' || !cur.guesses[id] || !room.resolveSnap) return;
+    const snap = room.resolveSnap;
+    restore(room, snap);
+    room.undo = room.resolveSnap = snap;
+    const c = room.current;
+    c.revealed = c.order.length;
+    applyWinners(room, c, [id]);
     emitState(room);
   });
 
@@ -845,11 +926,49 @@ io.on('connection', sock => {
     room.used.add(key(cur.cat, cur.row));
     room.current = null;
     room.picker = nextPicker(room);
-    if (freeTiles(room) === 0) { if (room.data.finale) return startFinale(room); room.phase = 'end'; }
+    room.done++;
+    const left = freeTiles(room);
+    // Comeback: alle N Fragen bekommt der Letzte eine Jokerwahl
+    const every = room.settings.comeback;
+    if (every > 0 && room.done % every === 0 && room.players.length > 1 && left > 0) {
+      const min = Math.min(...room.players.map(p => p.score));
+      const last = room.players.filter(p => p.score === min);
+      last.forEach(p => p.pendingPick++);
+      notice(room, 'comeback', `Comeback! ${last.map(p => p.name).join(' und ')} ${last.length > 1 ? 'liegen' : 'liegt'} hinten und ${last.length > 1 ? 'dürfen' : 'darf'} sich einen Joker aussuchen.`);
+    }
+    // Kategorie abgeraeumt -> Zwischenstand einblenden
+    const catDone = room.data.kategorien[cur.cat].fragen.every((_, ri) => room.used.has(key(cur.cat, ri)));
+    if (catDone && left > 0) {
+      room.interlude = { cat: room.data.kategorien[cur.cat].name, until: Date.now() + INTERLUDE_MS };
+      clearTimeout(room.timer);
+      room.timer = setTimeout(() => { room.interlude = null; emitState(room); }, INTERLUDE_MS);
+    }
+    if (left === 0) { if (room.data.finale) return startFinale(room); room.phase = 'end'; }
     emitState(room);
   });
 
   sock.on('host:finale', () => { const room = hostRoom(); if (room && room.phase === 'game') startFinale(room); });
+
+  // Letzte Wertung zurueeknehmen (gilt bis zur naechsten Frage)
+  sock.on('host:undo', () => {
+    const room = hostRoom();
+    if (!room || !room.undo) return;
+    restore(room, room.undo);
+    emitState(room);
+  });
+  sock.on('host:dismiss', () => {
+    const room = hostRoom();
+    if (!room || !room.interlude) return;
+    clearTimeout(room.timer); room.interlude = null;
+    emitState(room);
+  });
+  sock.on('player:look', ({ color, avatar } = {}) => {
+    const room = playerRoom();
+    const p = room && player(room, sock.data.pid);
+    if (!p) return;
+    Object.assign(p, pickLook(room, color, avatar));
+    emitState(room);
+  });
   sock.on('host:finaleNext', () => { const room = hostRoom(); if (room && room.phase === 'finale') finaleNext(room); });
 
   sock.on('host:adjust', ({ id, delta } = {}) => {
@@ -904,6 +1023,7 @@ io.on('connection', sock => {
     const room = hostRoom();
     if (!room) return;
     clearTimers(room.current);
+    clearTimeout(room.timer); room.interlude = null; room.undo = null;
     room.phase = 'end';
     room.current = null;
     emitState(room);
@@ -921,8 +1041,8 @@ io.on('connection', sock => {
       if (room.players.some(x => x.name.toLowerCase() === name.toLowerCase()))
         return cb({ ok: false, error: 'Dieser Name ist schon vergeben.' });
       if (room.players.length >= 30) return cb({ ok: false, error: 'Der Raum ist voll.' });
-      p = { id: crypto.randomBytes(4).toString('hex'), token: token(), name, score: 0,
-            jokers: [], pendingPick: 0, stats: newStats(), socketId: null, connected: false };
+      p = { id: crypto.randomBytes(4).toString('hex'), token: token(), name, score: 0, streak: 0,
+            jokers: [], pendingPick: 0, stats: newStats(), socketId: null, connected: false, ...pickLook(room, msg.color, msg.avatar) };
       room.players.push(p);
     }
     p.socketId = sock.id;

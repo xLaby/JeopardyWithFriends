@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3.1
+# Quiz Show (Jeopardy-Stil) – Version 3.2
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -25,8 +25,16 @@ Eingaben wie `1.200`, `12,50` oder `ca. 300 €` werden verstanden.
 Ein optionaler Block `"finale"` mit beliebig vielen Fragen. Es startet automatisch, wenn das Board leer ist, oder jederzeit über „Finale starten".
 Pro Frage: **Einsatz** (45 s, jeder setzt verdeckt 0 bis Punktestand; wer im Minus ist, darf bis 100 setzen) → **Frage zeigen**, alle tippen ihre Antwort (Schätz-/Finalzeit) → **Aufdecken** vom Letzten zum Ersten: Antwort zeigen, richtig/falsch, Einsatz wird dazugezählt oder abgezogen. Wer nicht antwortet, verliert seinen Einsatz automatisch. Danach die nächste Finalfrage oder die Siegerehrung.
 
+## Spielgefühl
+- **Farbe und Avatar:** Beim Beitreten wählt jeder eine Farbe und ein Emoji (in der Lobby änderbar). Beides erscheint auf Chips, Buzzer, Listen und Siegerehrung.
+- **Reaktionszeiten:** Nach jedem Buzz sehen alle, wer wie schnell war („Reaktion: 🦊 Anna 0,38 s · 🐼 Basti 0,41 s"). Gezeigt werden alle, die im 250-ms-Fenster gedrückt haben.
+- **Serien-Bonus:** Drei richtige Antworten in Folge geben einen Bonus in Höhe des kleinsten Feldwerts, danach alle weiteren drei wieder. Eine falsche Antwort setzt die Serie zurück, Nicht-Antworten nicht. Spieler mit laufender Serie tragen ein 🔥-Badge.
+- **Comeback:** Nach jeder 20. Frage (in der Lobby einstellbar, 0 = aus) bekommt der Letzte eine Jokerwahl – bei Gleichstand alle Letzten.
+- **Zwischenstand:** Ist eine Kategorie komplett abgeräumt, erscheint 9 Sekunden lang ein animiertes Ranking bei allen. Der Spielleiter kann es mit „Weiter" früher schließen.
+- **Rückgängig:** Der Spielleiter kann die letzte Wertung zurücknehmen (Richtig/Falsch, Überspringen, Schätz-Auflösung, Finale-Wertung) – auch noch nach „Zurück zum Board", bis die nächste Frage gewählt ist. Punkte, Joker, Serie, Board und Zugreihenfolge werden komplett zurückgesetzt.
+
 ## Siegerehrung und Awards
-Podium plus Awards, die der Server aus dem Spielverlauf berechnet: Schnellster Buzzer (kürzeste Reaktionszeit), Treffsicher, Jackpot (größter Einzelgewinn), Dauerdrücker, Schätzkönig, Jokerfreund, Mut zur Lücke. Bei Gleichstand teilen sich mehrere den Award.
+Podium plus Awards, die der Server aus dem Spielverlauf berechnet: Schnellster Buzzer (kürzeste Reaktionszeit), Treffsicher, Jackpot (größter Einzelgewinn), Dauerdrücker, Schätzkönig, Jokerfreund, Serientäter (längste Serie), Mut zur Lücke. Bei Gleichstand teilen sich mehrere den Award.
 
 ## Buzzer-Fairness
 Jedes Gerät misst selbst die Zeit zwischen „Buzzer wird sichtbar" und „Spieler drückt". Der Server sammelt nach dem ersten Buzz noch 250 ms lang weitere und nimmt die kürzeste Reaktionszeit. Wer drückt, bevor der Buzzer frei ist, wird 1 Sekunde gesperrt.
@@ -88,4 +96,4 @@ Node.js ab Version 18, dann im Projektordner `npm install` und `npm start`, dana
 ## Online stellen (Render)
 Projekt in GitHub aktualisieren, Render deployt automatisch neu. Build Command `npm install`, Start Command `npm start`.
 Der Gratis-Server schläft nach etwa 15 Minuten ohne Aufrufe ein; verbundene Spieler halten ihn über einen kleinen Ping alle 5 Minuten wach. Der Spielstand liegt nur im Arbeitsspeicher – vor dem Spielabend einmal die Seite aufrufen.
-Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=4`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.
+Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=5`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.

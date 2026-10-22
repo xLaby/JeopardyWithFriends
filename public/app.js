@@ -15,11 +15,21 @@ const JOKER = {
   coffee: { name: 'Kaffeepause', icon: '☕', desc: 'Ein Mitspieler deiner Wahl setzt bei dieser Frage aus.' },
   risk:   { name: 'Risiko', icon: '⚡', desc: 'Richtig: dreifache Punkte. Falsch oder keine Antwort: doppelter Fragenwert Abzug.' }
 };
-const WHY = { correct: 'richtig', wrong: 'falsch', risk: 'Risiko verloren' };
+const WHY = { correct: 'richtig', wrong: 'falsch', risk: 'Risiko verloren', streak: 'Serien-Bonus' };
+// Muss zur Liste im Server passen (wird dort geprueft)
+const COLORS = ['#e0443a', '#f5b92e', '#41c27a', '#3b9ddd', '#a86be0', '#ff9ad5', '#ff8a3c', '#2ec4b6', '#c9b8a0', '#8ff0b8', '#ffe08a', '#6b8cff'];
+const AVATARS = ['🦊', '🐼', '🦁', '🐸', '🐙', '🦄', '🐧', '🐯', '🐨', '🦉', '🐵', '🐺', '🦖', '🐢', '🦋', '🐝', '🍕', '🎸', '🚀', '🎲', '🧙', '🤖', '👽', '🍩'];
+let look = JSON.parse(localStorage.getItem('quiz-look') || 'null') || { color: Math.floor(Math.random() * COLORS.length), avatar: Math.floor(Math.random() * AVATARS.length) };
+let lookOpen = false;
+const seenNotices = new Set();
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const save = () => me ? localStorage.setItem(LS, JSON.stringify(me)) : localStorage.removeItem(LS);
 const pname = id => { const p = S && S.players.find(x => x.id === id); return p ? p.name : '?'; };
+const pOf = id => S && S.players.find(x => x.id === id);
+// Name mit Avatar (fuer Listen und Chips)
+const plabel = id => { const p = pOf(id); return p ? `<span class="av">${p.avatar}</span>${esc(p.name)}` : '?'; };
+const fmtSec = ms => (ms / 1000).toFixed(2).replace('.', ',') + ' s';
 const toUrl = u => /^https?:/i.test(u) || u.startsWith('/') ? u : '/' + encodeURI(u);
 const fmtTime = s => s >= 60 ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : String(s);
 const fmtMult = m => ('×' + m).replace('.', ',');
@@ -61,7 +71,8 @@ const SFX = {
   timeup: () => [0, .18, .36].forEach(t => tone(440, t, .14, 'square', .12)),
   ding: () => { tone(1047, 0, .4, 'sine', .14); },
   stage: () => { tone(660, 0, .1, 'triangle', .12); tone(880, .1, .15, 'triangle', .12); },
-  finale: () => [392, 392, 392, 311, 466, 392, 311, 466, 392].forEach((f, i) => tone(f, i * .22, i === 8 ? .6 : .2, 'sawtooth', .1))
+  finale: () => [392, 392, 392, 311, 466, 392, 311, 466, 392].forEach((f, i) => tone(f, i * .22, i === 8 ? .6 : .2, 'sawtooth', .1)),
+  streak: () => [659, 784, 988, 1319, 1568].forEach((f, i) => tone(f, i * .08, .3, 'triangle', .16))
 };
 // limit > 0: nur die ersten Sekunden abspielen (Sound-Reveal)
 function playMedia(src, limit) {
@@ -134,6 +145,7 @@ setInterval(() => {
     const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
     els.forEach(el => { el.textContent = fmtTime(left); el.classList.toggle('warn', left <= 3 && left > 0); });
   }
+  document.querySelectorAll('.notice[data-exp]').forEach(el => { if (+el.dataset.exp < Date.now()) el.remove(); });
   const c = S && S.current;
   if (c && c.reveal && c.reveal.mode === 'bild' && c.state === 'open') {
     const st = stageNow(c);
@@ -202,6 +214,8 @@ function effects(prev, s) {
       }
     } else if (!previewing) stopMedia();
   } else { stopMedia(); lastAudioKey = ''; previewing = false; }
+  (s.notices || []).forEach(n => { if (!seenNotices.has(n.id)) { seenNotices.add(n.id); if (n.age < 3000) (n.kind === 'streak' ? SFX.streak : SFX.joker)(); } });
+  if (s.interlude && !(prev && prev.interlude)) SFX.ding();
   if (s.phase === 'finale' && (!prev || prev.phase !== 'finale')) { menuFor = null; SFX.finale(); }
   if (s.phase === 'end' && (!prev || prev.phase !== 'end')) { menuFor = null; SFX.right(); setTimeout(confetti, 200); }
 }
@@ -243,6 +257,7 @@ function viewStart() {
       <h2>Mitspielen</h2>
       <input type="text" id="jcode" placeholder="Raumcode" maxlength="4" autocapitalize="characters" autocomplete="off" value="${esc(code.toUpperCase())}">
       <input type="text" id="jname" placeholder="Dein Name" maxlength="20" autocomplete="nickname">
+      ${lookPicker()}
       <div class="err" id="err">${esc(startError)}</div>
       <button data-act="join">Beitreten</button>
     </div>
@@ -256,16 +271,24 @@ function viewStart() {
   startError = '';
 }
 
+function lookPicker() {
+  return `<div class="lookpick">
+    <div class="muted">Deine Farbe</div>
+    <div class="swatches">${COLORS.map((c, i) => `<button class="sw ${look.color === i ? 'on' : ''}" style="--pc:${c}" data-act="color" data-i="${i}" aria-label="Farbe ${i + 1}"></button>`).join('')}</div>
+    <div class="muted" style="margin-top:8px">Dein Avatar</div>
+    <div class="avgrid">${AVATARS.map((a, i) => `<button class="avb ${look.avatar === i ? 'on' : ''}" data-act="avatar" data-i="${i}">${a}</button>`).join('')}</div>
+  </div>`;
+}
 function playerList() {
   if (!S.players.length) return '<p class="muted">Noch niemand im Raum.</p>';
   return '<ul class="plist">' + S.players.map((p, i) => `
-    <li><span><span class="dot ${p.connected ? '' : 'off'}"></span>${i + 1}. ${esc(p.name)}</span></li>`).join('') + '</ul>';
+    <li><span><span class="dot ${p.connected ? '' : 'off'}"></span>${i + 1}. ${plabel(p.id)}</span></li>`).join('') + '</ul>';
 }
 function hostPlayerList() {
   if (!S.players.length) return '<p class="muted">Noch niemand im Raum.</p>';
   const n = S.players.length;
   return '<ul class="plist">' + S.players.map((p, i) => `
-    <li><span><span class="dot ${p.connected ? '' : 'off'}"></span>${i + 1}. ${esc(p.name)}</span>
+    <li><span><span class="dot ${p.connected ? '' : 'off'}"></span>${i + 1}. ${plabel(p.id)}</span>
     <span class="row">
       <button class="ghost sm" data-act="move" data-id="${p.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="Nach oben">▲</button>
       <button class="ghost sm" data-act="move" data-id="${p.id}" data-dir="1" ${i === n - 1 ? 'disabled' : ''} title="Nach unten">▼</button>
@@ -306,6 +329,7 @@ function viewHostLobby() {
             <label>Joker-Felder gesamt<input type="number" id="setj" min="0" max="150" value="${S.settings.joker}"></label>
             <label>Antwortzeit nach Buzz (s)<input type="number" id="seta" min="3" max="60" value="${S.settings.answerTime}"></label>
             <label>Schätz-/Finalzeit (s)<input type="number" id="setg" min="10" max="600" value="${S.settings.guessTime}"></label>
+            <label>Comeback alle … Fragen (0 = aus)<input type="number" id="setc" min="0" max="200" value="${S.settings.comeback}"></label>
           </div>
         </div>
       </div>
@@ -333,6 +357,7 @@ function viewHostLobby() {
   document.getElementById('setj').onchange = e => socket.emit('host:setSettings', { joker: e.target.value });
   document.getElementById('seta').onchange = e => socket.emit('host:setSettings', { answerTime: e.target.value });
   document.getElementById('setg').onchange = e => socket.emit('host:setSettings', { guessTime: e.target.value });
+  document.getElementById('setc').onchange = e => socket.emit('host:setSettings', { comeback: e.target.value });
 }
 
 function viewPlayerLobby() {
@@ -342,22 +367,24 @@ function viewPlayerLobby() {
     <h2>Du bist drin, ${esc(me.name)}</h2>
     <p class="muted">Raum ${S.code}. Warte, bis der Spielleiter das Spiel startet.<br>Schalte den Ton an, es gibt Sounds.</p>
     <div class="panel" style="text-align:left"><h2>Spieler (${S.players.length})</h2>${playerList()}</div>
+    <div class="panel" style="text-align:left"><button class="ghost" data-act="looktoggle">${lookOpen ? 'Fertig' : 'Farbe und Avatar ändern'}</button>${lookOpen ? lookPicker() : ''}</div>
     <button class="ghost" data-act="leave">Raum verlassen</button>
   </div>`;
 }
 
 function jokerBadges(p) {
   const n = {}; p.jokers.forEach(t => n[t] = (n[t] || 0) + 1);
-  return Object.keys(n).map(t => `<span class="badge" title="${esc(JOKER[t].name)}">${JOKER[t].icon}${n[t] > 1 ? ' ' + n[t] : ''}</span>`).join('') +
+  return (p.streak >= 3 ? `<span class="badge fire" title="${p.streak} richtige in Folge">🔥 ${p.streak}</span>` : '') +
+    Object.keys(n).map(t => `<span class="badge" title="${esc(JOKER[t].name)}">${JOKER[t].icon}${n[t] > 1 ? ' ' + n[t] : ''}</span>`).join('') +
     (p.pending ? '<span class="badge new">Joker wählen</span>' : '');
 }
 function chips() {
   const host = me.role === 'host';
   return '<div class="chips">' + S.players.map(p => {
     const cls = `chip ${S.picker === p.id ? 'turn' : ''} ${p.connected ? '' : 'off'} ${p.id === me.pid ? 'me' : ''} ${menuFor === p.id ? 'turn' : ''}`;
-    const inner = `${esc(p.name)}${jokerBadges(p)}<b>${p.score}</b>`;
-    return host ? `<button class="${cls}" data-act="menu" data-id="${p.id}" title="Punkte, Zug, Joker">${inner}</button>`
-                : `<div class="${cls}">${inner}</div>`;
+    const inner = `${plabel(p.id)}${jokerBadges(p)}<b>${p.score}</b>`;
+    return host ? `<button class="${cls}" style="--pc:${p.color}" data-act="menu" data-id="${p.id}" title="Punkte, Zug, Joker">${inner}</button>`
+                : `<div class="${cls}" style="--pc:${p.color}">${inner}</div>`;
   }).join('') + '</div>' + (host ? playerMenu() : '');
 }
 // Host-Menue fuer einen Spieler (ersetzt das prompt-Fenster)
@@ -404,6 +431,7 @@ function hud() {
     <div class="r"><span class="muted">Raum ${S.code}</span>
       ${host && S.phase === 'game' && !S.current ? `<button class="ghost ${jokerMode ? 'on' : ''}" data-act="jokermode">${jokerMode ? 'Joker-Modus beenden' : 'Joker-Felder bearbeiten'}</button>` : ''}
       ${host && S.phase === 'game' && !S.current && S.finale ? '<button class="ghost" data-act="finale">Finale starten</button>' : ''}
+      ${host && S.canUndo ? `<button class="ghost undo" data-act="undo" title="${esc(S.canUndo)}">↶ Rückgängig</button>` : ''}
       <button class="ghost" data-act="mute">${muted ? 'Ton aus' : 'Ton an'}</button>
       ${host ? '<button class="ghost" data-act="end">Beenden</button>' : ''}</div></div>
   ${S.hostOnline ? '' : '<div class="banner">Der Spielleiter ist gerade nicht verbunden.</div>'}`;
@@ -423,7 +451,28 @@ function viewGame() {
   <div class="turnmsg">${turn}</div>
   ${board({ canPick, toggle: edit })}
   ${S.current ? card() : ''}
-  ${host ? '' : pickPanel()}`;
+  ${host ? '' : pickPanel()}
+  ${interlude()}${notices()}`;
+}
+// Zwischenstand nach einer abgeraeumten Kategorie
+function interlude() {
+  const it = S.interlude;
+  if (!it) return '';
+  const r = [...S.players].sort((a, b) => b.score - a.score);
+  const max = Math.max(1, ...r.map(p => Math.abs(p.score)));
+  return `<div class="inter"><div class="intercard">
+    <div class="meta">Zwischenstand</div>
+    <h2>„${esc(it.cat)}" ist abgeräumt</h2>
+    <div class="muted">${S.done} von ${S.total} Fragen gespielt</div>
+    <ol class="ranks">${r.map((p, i) => `<li style="--pc:${p.color}"><span class="pos">${i + 1}.</span><span class="nm">${plabel(p.id)}</span>
+      <span class="barwrap"><span class="bar" style="width:${Math.max(4, Math.round(Math.abs(p.score) / max * 100))}%;${p.score < 0 ? 'opacity:.45' : ''}"></span></span><b>${p.score}</b></li>`).join('')}</ol>
+    ${me.role === 'host' ? '<div class="btns" style="justify-content:center"><button data-act="dismiss">Weiter</button></div>' : '<div class="status soft center">Weiter geht es gleich …</div>'}
+  </div></div>`;
+}
+function notices() {
+  const list = (S.notices || []).filter(n => n.age < 9000);
+  if (!list.length) return '';
+  return `<div class="notices">${list.map(n => `<div class="notice ${n.kind}" data-exp="${Date.now() + 9000 - n.age}">${esc(n.text)}</div>`).join('')}</div>`;
 }
 
 function resultText(c, guess) {
@@ -469,6 +518,10 @@ function card() {
   if ((c.state === 'buzzed' || (guess && c.state === 'open')) && c.left != null)
     cd = `<div class="cdwrap ${c.timeUp ? 'over' : ''}"><span class="cd">${fmtTime(Math.ceil(c.left / 1000))}</span></div>`;
 
+  if (c.buzzes && c.buzzes.length && c.state !== 'reading') {
+    const b = [...c.buzzes].sort((x, y) => x.elapsed - y.elapsed);
+    extra += `<div class="rt">Reaktion: ${b.map((x, i) => `<span class="${i === 0 ? 'first' : ''}">${plabel(x.pid)} ${fmtSec(x.elapsed)}</span>`).join('<span class="sep">·</span>')}</div>`;
+  }
   if (c.used) {
     const j = JOKER[c.used.type];
     extra += `<div class="usedj"><span class="ic">${j.icon}</span><b>${j.name}</b> von ${esc(pname(c.used.by))}${c.used.target ? ` – ${esc(pname(c.used.target))} setzt bei dieser Frage aus.` : ''}</div>`;
@@ -495,7 +548,7 @@ function card() {
     else if (c.state === 'reading') label = 'WARTEN';
     else if (c.pending || buzzSent) label = '…';
     else if (can) cls = 'live';
-    buzzer = `<button class="buzz ${cls}" data-buzz aria-disabled="${can ? 'false' : 'true'}">${label}</button>`;
+    buzzer = `<button class="buzz ${cls}" style="--pc:${mine.color}" data-buzz aria-disabled="${can ? 'false' : 'true'}">${label}</button>`;
     if (locked && c.state !== 'reading') extra += `<div class="status">${c.used && c.used.target === me.pid ? 'Kaffeepause – du setzt bei dieser Frage aus.' : 'Du bist für diese Frage raus.'}</div>`;
   }
 
@@ -520,7 +573,7 @@ function card() {
     glist = `<ul class="glist">${list.map((g, i) => {
       const hid = host && c.state === 'review' && i >= c.guess.revealed;
       return `<li class="${c.winners.includes(g.pid) ? 'win' : ''} ${hid ? 'hid' : ''} ${click ? 'click' : ''}" ${click ? `data-act="setWinner" data-id="${g.pid}" title="Zum Gewinner machen"` : ''}>
-        <span>${esc(pname(g.pid))}${hid ? ' <small class="muted">(noch verdeckt)</small>' : ''}</span><b>${esc(g.text)}${unit}</b></li>`;
+        <span>${plabel(g.pid)}${hid ? ' <small class="muted">(noch verdeckt)</small>' : ''}</span><b>${esc(g.text)}${unit}</b></li>`;
     }).join('')}
     ${c.state !== 'open' && noGuess.length ? `<li class="muted"><span>Keine Abgabe</span><span>${esc(noGuess.map(p => p.name).join(', '))}</span></li>` : ''}
     ${!host && c.state === 'review' && c.guess.revealed < c.guess.total ? '<li class="muted"><span>…</span><span>noch ' + (c.guess.total - c.guess.revealed) + ' verdeckt</span></li>' : ''}</ul>`;
@@ -591,7 +644,7 @@ function viewFinale() {
              : '<div class="status">Gleich geht es los …</div>'}
     </div>`;
   } else body = finaleCard();
-  $app.innerHTML = `${hud()}${chips()}${body}`;
+  $app.innerHTML = `${hud()}${chips()}${body}${notices()}`;
 }
 
 function finaleCard() {
@@ -603,7 +656,7 @@ function finaleCard() {
 
   if (c.state === 'wager') {
     status = host ? `${c.wagered.length} von ${n} haben ihren Einsatz gesetzt.` : 'Setze deinen Einsatz für diese Frage!';
-    if (host) extra += `<ul class="glist">${S.players.map(p => `<li class="${c.wagered.includes(p.id) ? 'win' : ''}"><span>${esc(p.name)}</span><b>${c.wagered.includes(p.id) ? c.wagers[p.id] : '–'}</b></li>`).join('')}</ul>`;
+    if (host) extra += `<ul class="glist">${S.players.map(p => `<li class="${c.wagered.includes(p.id) ? 'win' : ''}"><span>${plabel(p.id)}</span><b>${c.wagered.includes(p.id) ? c.wagers[p.id] : '–'}</b></li>`).join('')}</ul>`;
     if (!host && mine) {
       const max = mine.score > 0 ? mine.score : 100;
       const done = c.wagered.includes(me.pid);
@@ -615,7 +668,7 @@ function finaleCard() {
     }
   } else if (c.state === 'answer') {
     status = host ? `${c.answered.length} von ${n} haben geantwortet.` : 'Tippe deine Antwort ein!';
-    if (host) extra += `<ul class="glist">${S.players.map(p => `<li class="${c.answered.includes(p.id) ? 'win' : ''}"><span>${esc(p.name)} <small class="muted">Einsatz ${c.wagers[p.id] || 0}</small></span><b>${esc(c.answers[p.id] || '–')}</b></li>`).join('')}</ul>`;
+    if (host) extra += `<ul class="glist">${S.players.map(p => `<li class="${c.answered.includes(p.id) ? 'win' : ''}"><span>${plabel(p.id)} <small class="muted">Einsatz ${c.wagers[p.id] || 0}</small></span><b>${esc(c.answers[p.id] || '–')}</b></li>`).join('')}</ul>`;
     if (!host && mine) {
       const done = c.answered.includes(me.pid);
       box = `<div class="guessbox"><div class="muted">Dein Einsatz: <b>${c.wagered.includes(me.pid) ? (myWager != null ? myWager : '?') : 0}</b></div><div class="row" style="margin-top:6px">
@@ -631,7 +684,7 @@ function finaleCard() {
       const s = r.shown[pid], isCur = c.state === 'review' && i === r.i;
       const judged = s && s.correct !== undefined;
       return `<li class="${isCur ? 'cur' : ''} ${judged ? (s.correct ? 'ok' : 'bad') : ''}">
-        <span class="nm">${esc(pname(pid))}</span>
+        <span class="nm">${plabel(pid)}</span>
         <span class="an">${s ? (s.answer ? esc(s.answer) : '<span class="hid">keine Antwort</span>') : (host ? `<span class="hid">${esc(c.answers[pid] || 'keine Antwort')}</span>` : '<span class="hid">verdeckt</span>')}</span>
         <span class="wg">${judged ? (s.correct ? '+' : '−') + s.wager : (host ? `<span class="hid">Einsatz ${c.wagers[pid] || 0}</span>` : '')}</span>
         <span class="rs">${judged ? (s.correct ? '✓' : '✗') : ''}</span></li>`;
@@ -678,9 +731,9 @@ function viewEnd() {
   const rankOf = p => r.indexOf(p);
   $app.innerHTML = `<div class="wrap wide stack center">
     <div class="logo">Siegerehrung</div>
-    <div class="podium">${order.map(p => `<div class="pod"><div class="n">${esc(p.name)}</div><div class="s">${p.score}</div>
+    <div class="podium">${order.map(p => `<div class="pod" style="--pc:${p.color}"><div class="pav">${p.avatar}</div><div class="n">${esc(p.name)}</div><div class="s">${p.score}</div>
       <div class="bar" style="height:${h[rankOf(p)]}px">${rankOf(p) + 1}</div></div>`).join('')}</div>
-    ${r.length > 3 ? `<div class="panel" style="text-align:left;max-width:520px;margin:0 auto"><ul class="plist">${r.slice(3).map((p, i) => `<li><span>${i + 4}. ${esc(p.name)}</span><b>${p.score}</b></li>`).join('')}</ul></div>` : ''}
+    ${r.length > 3 ? `<div class="panel" style="text-align:left;max-width:520px;margin:0 auto"><ul class="plist">${r.slice(3).map((p, i) => `<li><span>${i + 4}. ${plabel(p.id)}</span><b>${p.score}</b></li>`).join('')}</ul></div>` : ''}
     ${S.awards.length ? `<h2 style="margin-top:24px">Awards</h2><div class="awards">${S.awards.map(a => `<div class="award"><div class="t">${esc(a.title)}</div><div class="n">${esc(a.names.join(' & '))}</div><div class="v">${esc(a.value)}</div></div>`).join('')}</div>` : ''}
     <button class="ghost" data-act="leave">Zur Startseite</button>
   </div>`;
@@ -735,7 +788,8 @@ document.addEventListener('click', e => {
     case 'join': {
       const code = document.getElementById('jcode').value.trim().toUpperCase();
       const name = document.getElementById('jname').value.trim();
-      socket.emit('player:join', { code, name }, r => {
+      localStorage.setItem('quiz-look', JSON.stringify(look));
+      socket.emit('player:join', { code, name, color: look.color, avatar: look.avatar }, r => {
         if (!r.ok) return document.getElementById('err').textContent = r.error;
         me = { role: 'player', code: r.code, token: r.token, pid: r.pid, name: r.name }; save();
       });
@@ -758,6 +812,11 @@ document.addEventListener('click', e => {
     case 'close': socket.emit('host:close'); break;
     case 'finale': if (confirm('Finale jetzt starten? Das Board wird dann nicht weitergespielt.')) socket.emit('host:finale'); break;
     case 'finaleNext': socket.emit('host:finaleNext'); break;
+    case 'undo': if (confirm('Rückgängig: ' + S.canUndo + '?')) socket.emit('host:undo'); break;
+    case 'dismiss': socket.emit('host:dismiss'); break;
+    case 'color': look.color = +d.i; localStorage.setItem('quiz-look', JSON.stringify(look)); if (me && me.role === 'player') socket.emit('player:look', look); render(); break;
+    case 'avatar': look.avatar = +d.i; localStorage.setItem('quiz-look', JSON.stringify(look)); if (me && me.role === 'player') socket.emit('player:look', look); render(); break;
+    case 'looktoggle': lookOpen = !lookOpen; render(); break;
     case 'kick': if (confirm(pname(d.id) + ' wirklich entfernen?')) { socket.emit('host:kick', { id: d.id }); menuFor = null; } break;
     case 'snd': previewing = false; socket.emit('host:sound', { on: d.on === '1' }); break;
     case 'tapsound': { const c = S.current; playMedia(c.sound, c.reveal && c.reveal.mode === 'sound' ? c.reveal.soundStages[c.reveal.stage] : 0); break; }
