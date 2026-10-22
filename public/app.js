@@ -75,8 +75,11 @@ const SFX = {
   streak: () => [659, 784, 988, 1319, 1568].forEach((f, i) => tone(f, i * .08, .3, 'triangle', .16))
 };
 // limit > 0: nur die ersten Sekunden abspielen (Sound-Reveal)
+let mediaError = '';
+media.onerror = () => { mediaError = 'Sound konnte nicht geladen werden – kein direkter Dateilink (YouTube & Co. gehen nicht) oder die Seite blockt das Einbetten.'; render(); };
 function playMedia(src, limit) {
   if (muted) return;
+  mediaError = '';
   clearTimeout(mediaStop);
   media.src = toUrl(src); media.currentTime = 0;
   media.play().then(() => {
@@ -594,6 +597,7 @@ function card() {
   }
 
   const blocked = c.sound && c.audio.on && audioBlocked ? '<div class="btns"><button data-act="tapsound">Sound starten</button></div>' : '';
+  const merr = c.sound && mediaError && host ? `<div class="status soft" style="color:#ff9a90">${esc(mediaError)}</div>` : '';
   const showAns = host || c.state === 'reveal';
   const hostAns = showAns ? `<div class="a">Antwort: <b>${esc(c.answer)}${guess ? unit : ''}</b></div>` : '';
   const hint = host && c.state === 'reading' ? `<div class="status soft">Die Spieler sehen die Frage${c.hasSound ? ' und hören den Sound' : ''} erst nach der Freigabe.${rev ? ' Reveal-Frage: je früher gebuzzert wird, desto höher der Faktor.' : ''}</div>` : '';
@@ -602,8 +606,9 @@ function card() {
   let pic = '';
   if (img && !hidden) {
     const pixel = rev && c.reveal.mode === 'bild' && c.state !== 'reveal' && !(host && c.state === 'reading');
+    const imgErr = host ? ` onerror="this.outerHTML='<div class=&quot;status soft&quot; style=&quot;color:#ff9a90&quot;>Bild konnte nicht geladen werden – kein direkter Dateilink oder die Seite blockt das Einbetten.</div>'"` : ' onerror="this.remove()"';
     pic = pixel ? `<canvas class="pix" data-src="${esc(toUrl(img))}" data-stage="${stageNow(c)}" width="16" height="9"></canvas>`
-                : `<img class="qimg" src="${esc(toUrl(img))}" alt="">`;
+                : `<img class="qimg" src="${esc(toUrl(img))}" alt=""${imgErr}>`;
   }
 
   return `<div class="ov"><div class="card ${cardFresh ? 'enter' : ''}">
@@ -614,7 +619,7 @@ function card() {
     ${c.sound && c.audio.on ? '<div class="status soft">Sound läuft …</div>' : ''}
     ${c.question && !hidden ? `<div class="q">${esc(c.question)}</div>` : ''}
     ${rev && !hidden ? stages(c) : ''}
-    ${blocked}${hostAns}${hint}
+    ${blocked}${merr}${hostAns}${hint}
     <div class="status">${status}</div>${cd}${extra}${glist}${play}${buzzer}${guessBox}
     <div class="btns">${btns}</div>
   </div></div>`;

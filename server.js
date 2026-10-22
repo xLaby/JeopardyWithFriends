@@ -52,7 +52,7 @@ app.post('/upload', express.json({ limit: '56mb' }), (req, res) => {
       blobs.set(safe, { buf, mime: m[1] });
     }
     const fix = v => {
-      const safe = safeName(str(v, 300).replace(/^\/?media\//, ''));
+      const safe = safeName(str(v, 2000).replace(/^\/?media\//, ''));
       return blobs.has(safe) ? '/blob/' + room.code + '/' + encodeURIComponent(safe) : v;
     };
     const walk = f => { if (f && typeof f === 'object') ['bild', 'sound', 'antwortBild'].forEach(k => { if (f[k]) f[k] = fix(f[k]); }); };
@@ -81,7 +81,7 @@ const safeName = n => str(n, 80).toLowerCase().replace(/[^\w\-.]/g, '_');
 
 // Medien: https-Link, hochgeladenes Medium (/blob/...) oder Dateiname im Ordner "media"
 function mediaPath(v) {
-  v = str(v, 300);
+  v = str(v, 2000);
   if (!v) return '';
   if (/^https?:\/\/\S+$/i.test(v)) return v;
   if (/^\/blob\/[A-Z0-9]{4}\/[\w\-.%]+$/.test(v)) return v;

@@ -61,7 +61,22 @@ const IDB = {
 const idb = (fn) => fn().catch(() => {});   // IndexedDB ist Komfort, kein Muss
 
 /* ---------- Modell ---------- */
-const mediaRef = v => { v = s(v, 300); if (!v) return ''; if (isUrl(v)) return v; return v.replace(/^\/?media\//, ''); };
+const mediaRef = v => { v = s(v, 2000); if (!v) return ''; if (isUrl(v)) return v; return v.replace(/^\/?media\//, ''); };
+// Links, die auf eine Webseite statt auf eine Datei zeigen (YouTube, Spotify, Wikipedia-Artikel, Google-Bildersuche ...)
+const PAGE_HOSTS = /(^|\.)(youtube\.com|youtu\.be|spotify\.com|soundcloud\.com|instagram\.com|pinterest\.\w+|tiktok\.com|google\.\w+|bing\.com|imgur\.com\/gallery)/i;
+function linkProblem(v, kind) {
+  if (!isUrl(v)) return '';
+  let u; try { u = new URL(v); } catch (e) { return 'ist kein gültiger Link.'; }
+  if (u.protocol !== 'https:') return 'muss mit https:// beginnen (http wird vom Browser blockiert).';
+  const host = u.hostname.replace(/^www\./, '');
+  if (PAGE_HOSTS.test(host) || /youtube|youtu\.be/.test(host)) return 'zeigt auf eine Webseite (' + host + '), nicht auf eine Datei. YouTube & Co. gehen nicht – Datei herunterladen und als Datei einfügen.';
+  if (/wikipedia\.org$/.test(host) && /\/wiki\//.test(u.pathname)) return 'ist die Wikipedia-Seite, nicht das Bild. Bild anklicken → „Originaldatei" → den upload.wikimedia.org-Link kopieren.';
+  const last = u.pathname.split('/').pop() || '';
+  const ext = last.includes('.') ? last.split('.').pop().toLowerCase() : '';
+  const ok = kind === 'sound' ? /^(mp3|ogg|oga|m4a|aac|wav|flac|opus|webm)$/ : /^(jpe?g|png|gif|webp|svg|avif|bmp)$/;
+  if (!ok.test(ext)) return 'endet nicht auf eine ' + (kind === 'sound' ? 'Audio' : 'Bild') + '-Datei (' + (ext ? '.' + ext : 'keine Endung') + '). Vermutlich eine Seite statt einer Datei – Rechtsklick → „Bildadresse kopieren" nutzen.';
+  return '';
+}
 function normQ(q) {
   q = q || {};
   const t = s(q.typ, 20).toLowerCase().replace('ä', 'ae');
@@ -175,7 +190,8 @@ function validate() {
 }
 function checkMedia(q, label, ci, ri, add) {
   ['bild', 'sound', 'antwortBild'].forEach(k => {
-    const v = q[k]; if (!v || isUrl(v)) return;
+    const v = q[k]; if (!v) return;
+    if (isUrl(v)) { const pr = linkProblem(v, k === 'sound' ? 'sound' : 'bild'); if (pr) add('err', label + ': Link ' + pr, ci, ri); return; }
     if (!media.has(v)) add('warn', label + ': Datei „' + v + '" ist nicht geladen. Repo-Paket: muss im media/-Ordner liegen. Sofort-Paket: fehlt.', ci, ri);
     else if (k === 'sound' && media.get(v).size > 3 * 1048576) add('warn', label + ': Sound ist ' + fmtSize(media.get(v).size) + ' – besser kürzen (unter 3 MB).', ci, ri);
   });
@@ -436,11 +452,14 @@ function mediaBox(ci, ri, f, label, val) {
   let prev = '';
   if (val) {
     const src = has ? objUrl(val) : url ? val : '';
-    if (src) prev += f === 'sound' ? `<audio controls preload="none" src="${esc(src)}"></audio>` : `<img src="${esc(src)}" alt="">`;
-    prev += has ? `<span class="ok">✓ ${fmtSize(media.get(val).size)}</span>` : url ? '<span class="ok">Link</span>' : '<span class="miss">nicht geladen – muss im media/-Ordner liegen</span>';
+    const pr = url ? linkProblem(val, f === 'sound' ? 'sound' : 'bild') : '';
+    if (src && !pr) prev += f === 'sound'
+      ? `<audio controls preload="metadata" src="${esc(src)}" onerror="this.nextElementSibling.textContent='Datei lädt nicht – kein direkter Link oder Seite blockt Einbettung';this.remove()"></audio><span class="miss"></span>`
+      : `<img src="${esc(src)}" alt="" onerror="this.nextElementSibling.textContent='Bild lädt nicht – kein direkter Link oder Seite blockt Einbettung';this.remove()"><span class="miss"></span>`;
+    prev += has ? `<span class="ok">✓ ${fmtSize(media.get(val).size)}</span>` : url ? (pr ? `<span class="miss">Link ${esc(pr)}</span>` : '<span class="ok">Link</span>') : '<span class="miss">nicht geladen – muss im media/-Ordner liegen</span>';
   }
   return `<div class="mbox"><div class="ml">${label}</div>
-    <div class="row"><input type="text" data-mu="${f}" data-ci="${ci}" data-ri="${ri}" placeholder="Dateiname oder https-Link" value="${esc(val || '')}">
+    <div class="row"><input type="text" data-mu="${f}" data-ci="${ci}" data-ri="${ri}" placeholder="Dateiname oder direkter https-Link zur Datei" value="${esc(val || '')}">
       <label class="filebtn">Datei …<input type="file" hidden accept="${f === 'sound' ? 'audio/*' : 'image/*'}" data-mf="${f}" data-ci="${ci}" data-ri="${ri}"></label>
       ${val ? `<button class="ghost" data-mdel="${f}" data-ci="${ci}" data-ri="${ri}" title="Entfernen">✕</button>` : ''}</div>
     ${prev ? `<div class="prev">${prev}</div>` : ''}</div>`;
