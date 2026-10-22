@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3
+# Quiz Show (Jeopardy-Stil) – Version 3.1
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -47,6 +47,15 @@ Wird eine Frage beim Vorlesen übersprungen, bekommt der Spieler seinen Joker zu
 ## Spieler-Menü des Spielleiters
 Klick auf einen Spieler-Chip öffnet ein Menü: Punkte ±, beliebiger Betrag, als Nächstes dransetzen, Joker geben oder nehmen, Spieler entfernen.
 
+## Fragen-Editor (im Browser)
+Unter `/editor.html` (Link auf der Startseite und in der Lobby) gibt es einen Editor für komplette Fragenpakete: Kategorien, Punktwerte, alle Fragentypen, Joker-Felder, Finale, Bilder und Sounds per Datei oder https-Link. Bilder werden automatisch auf 1280 px verkleinert und als JPEG gespeichert. Der Entwurf wird im Browser gespeichert (Text im localStorage, Dateien in der IndexedDB) – nichts geht an den Server, bis du exportierst.
+
+Zwei Export-Wege:
+- **Repo-Paket (ZIP):** `fragen.json` + `media/`. Ins Projekt entpacken, committen, pushen. **Dauerhaft** – das ist der Normalfall.
+- **Sofort-Paket (`.quiz.json`):** eine Datei mit eingebetteten Medien, Upload in der Lobby unter „Fragen". Die Medien liegen danach **nur im Arbeitsspeicher des Servers**: Nach einem Neustart oder wenn der Gratis-Server einschläft, sind sie weg und das Paket muss vor dem nächsten Spiel neu hochgeladen werden. Maximal 40 MB. Die Lobby warnt beim Upload.
+
+„Paket laden" liest `fragen.json`, `.quiz.json` und Repo-ZIPs wieder ein. Die Prüfung rechts unten listet fehlende Antworten, Schätzfragen ohne Zahl, fehlende Dateien und Lücken im Board auf – Klick springt zur Stelle.
+
 ## Fragen, Bilder und Sounds
 Die Datei `fragen.json` (oder Upload in der Lobby):
 
@@ -79,4 +88,4 @@ Node.js ab Version 18, dann im Projektordner `npm install` und `npm start`, dana
 ## Online stellen (Render)
 Projekt in GitHub aktualisieren, Render deployt automatisch neu. Build Command `npm install`, Start Command `npm start`.
 Der Gratis-Server schläft nach etwa 15 Minuten ohne Aufrufe ein; verbundene Spieler halten ihn über einen kleinen Ping alle 5 Minuten wach. Der Spielstand liegt nur im Arbeitsspeicher – vor dem Spielabend einmal die Seite aufrufen.
-Nach jedem Update die Versionsnummer in `public/index.html` (`?v=3`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.
+Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=4`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.

@@ -20,7 +20,7 @@ const WHY = { correct: 'richtig', wrong: 'falsch', risk: 'Risiko verloren' };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const save = () => me ? localStorage.setItem(LS, JSON.stringify(me)) : localStorage.removeItem(LS);
 const pname = id => { const p = S && S.players.find(x => x.id === id); return p ? p.name : '?'; };
-const toUrl = u => /^https?:/i.test(u) ? u : '/' + encodeURI(u);
+const toUrl = u => /^https?:/i.test(u) || u.startsWith('/') ? u : '/' + encodeURI(u);
 const fmtTime = s => s >= 60 ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : String(s);
 const fmtMult = m => ('×' + m).replace('.', ',');
 const winMult = (c, pid) => { const j = c.used; return j && j.by === pid ? (j.type === 'double' ? 2 : j.type === 'risk' ? 3 : 1) : 1; };
@@ -251,6 +251,7 @@ function viewStart() {
       <p class="muted" style="margin:0">Du erstellst einen Raum, liest die Fragen vor und entscheidest über richtig oder falsch.</p>
       <button class="ghost" data-act="host">Neuen Raum erstellen</button>
     </div>
+    <p class="center"><a href="/editor.html">Fragen-Editor öffnen</a></p>
   </div>`;
   startError = '';
 }
@@ -295,7 +296,7 @@ function viewHostLobby() {
           <h2>Fragen</h2>
           <div>${S.cats.length} Kategorien × ${S.values.length} Stufen (${S.values[0]}–${S.values[S.values.length - 1]}), ${nq} Fragen.
             ${S.finale ? `Finale „${esc(S.finale.name)}" mit ${S.finale.count} Frage${S.finale.count === 1 ? '' : 'n'}.` : '<span class="muted">Kein Finale in diesem Paket.</span>'}</div>
-          <div class="muted">Eigene Fragen? Lade deine <code>fragen.json</code> hoch (<a href="/fragen-vorlage.json">Vorlage</a>).</div>
+          <div class="muted">Eigene Fragen? Lade deine <code>fragen.json</code> oder ein Sofort-Paket aus dem <a href="/editor.html" target="_blank">Fragen-Editor</a> hoch (<a href="/fragen-vorlage.json">Vorlage</a>).</div>
           <input type="file" id="qfile" accept=".json,application/json">
           <div class="err" id="err"></div>
         </div>
@@ -318,9 +319,15 @@ function viewHostLobby() {
   </div>`;
   document.getElementById('qfile').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
+    const err = m => { const el = document.getElementById('err'); if (el) el.textContent = m; };
     f.text().then(t => {
-      let data; try { data = JSON.parse(t); } catch { return document.getElementById('err').textContent = 'Das ist keine gültige JSON-Datei.'; }
-      socket.emit('host:setQuestions', data, r => { if (!r.ok) document.getElementById('err').textContent = r.error; });
+      let data; try { data = JSON.parse(t); } catch { return err('Das ist keine gültige JSON-Datei.'); }
+      const n = data && data.medien && typeof data.medien === 'object' ? Object.keys(data.medien).length : 0;
+      if (n && !confirm(`Dieses Sofort-Paket enthält ${n} eingebettete Bilder/Sounds.\n\nSie liegen danach NUR im Arbeitsspeicher des Servers: Nach einem Neustart oder wenn der Gratis-Server einschläft, sind sie weg und müssen vor dem nächsten Spiel neu hochgeladen werden.\n\nDauerhaft bleiben Medien nur, wenn sie als Repo-Paket in GitHub liegen.\n\nTrotzdem jetzt hochladen?`)) return;
+      err('Lade hoch …');
+      fetch('/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: me.code, token: me.token, paket: data }) })
+        .then(r => r.json()).then(r => err(r.ok ? '' : r.error))
+        .catch(() => err('Upload fehlgeschlagen (Datei zu groß oder keine Verbindung).'));
     });
   };
   document.getElementById('setj').onchange = e => socket.emit('host:setSettings', { joker: e.target.value });

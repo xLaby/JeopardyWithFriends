@@ -17,6 +17,7 @@ const BUZZ_WINDOW = 250;       // ms: nach dem ersten Buzz werden weitere gesamm
 const REVEAL_MULT = [2, 1.5, 1.25, 1];   // Punktfaktor je Reveal-Stufe (frueh buzzern lohnt sich)
 const SOUND_STAGES = [2, 5, 10, 0];      // Sekunden pro Sound-Stufe, 0 = komplett
 const WAGER_TIME = 45;         // Sekunden fuer den Finale-Einsatz
+const MAX_UPLOAD = 40 * 1024 * 1024;   // Sofort-Paket: eingebettete Medien insgesamt
 const rooms = new Map();
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -25,14 +26,61 @@ app.get('/ping', (req, res) => res.type('text').send('ok'));   // Keep-alive geg
 app.get('/fragen-vorlage.json', (req, res) =>
   res.download(path.join(__dirname, 'fragen.json'), 'fragen.json'));
 
+// Fragenpaket per HTTP hochladen (auch "Sofort-Pakete" mit eingebetteten Medien aus dem Editor).
+// Medien liegen danach nur im Arbeitsspeicher dieses Raums und sind nach einem Neustart weg.
+app.post('/upload', express.json({ limit: '56mb' }), (req, res) => {
+  const { code, token: tok, paket } = req.body || {};
+  const room = rooms.get(str(code).toUpperCase());
+  if (!room || room.hostToken !== tok) return res.status(403).json({ ok: false, error: 'Kein Zugriff auf diesen Raum.' });
+  if (room.phase !== 'lobby') return res.json({ ok: false, error: 'Nur in der Lobby moeglich.' });
+  try {
+    if (!paket || typeof paket !== 'object') throw new Error('Kein Fragenpaket gefunden.');
+    const blobs = new Map();
+    let total = 0;
+    const medien = paket.medien && typeof paket.medien === 'object' ? paket.medien : {};
+    for (const [name, dataUrl] of Object.entries(medien)) {
+      const safe = safeName(name);
+      const m = /^data:(image\/[\w+.-]+|audio\/[\w+.-]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl));
+      if (!safe || !m) throw new Error('Medium "' + str(name, 60) + '" hat ein ungueltiges Format.');
+      const buf = Buffer.from(m[2], 'base64');
+      total += buf.length;
+      if (total > MAX_UPLOAD) throw new Error('Eingebettete Medien zu gross (maximal 40 MB).');
+      blobs.set(safe, { buf, mime: m[1] });
+    }
+    const fix = v => {
+      const safe = safeName(str(v, 300).replace(/^\/?media\//, ''));
+      return blobs.has(safe) ? '/blob/' + room.code + '/' + encodeURIComponent(safe) : v;
+    };
+    const walk = f => { if (f && typeof f === 'object') ['bild', 'sound', 'antwortBild'].forEach(k => { if (f[k]) f[k] = fix(f[k]); }); };
+    (Array.isArray(paket.kategorien) ? paket.kategorien : []).forEach(c => (c && Array.isArray(c.fragen) ? c.fragen : []).forEach(walk));
+    if (paket.finale && Array.isArray(paket.finale.fragen)) paket.finale.fragen.forEach(walk);
+    room.data = normalize(paket);
+    room.fixed = fixedJokers(room.data);
+    room.blobs = blobs;
+    emitState(room);
+    res.json({ ok: true, medien: blobs.size, bytes: total });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+app.get('/blob/:code/:name', (req, res) => {
+  const room = rooms.get(req.params.code);
+  const b = room && room.blobs && room.blobs.get(req.params.name);
+  if (!b) return res.status(404).type('text').send('Nicht gefunden. Hochgeladene Medien gehen beim Neustart des Servers verloren.');
+  res.set('Content-Type', b.mime);
+  res.set('Cache-Control', 'private, max-age=3600');
+  res.send(b.buf);
+});
+
 // ---------- Fragen ----------
 const str = (v, max = 1000) => String(v == null ? '' : v).trim().slice(0, max);
 
-// Medien: entweder https-Link oder Dateiname im Ordner "media"
+const safeName = n => str(n, 80).toLowerCase().replace(/[^\w\-.]/g, '_');
+
+// Medien: https-Link, hochgeladenes Medium (/blob/...) oder Dateiname im Ordner "media"
 function mediaPath(v) {
   v = str(v, 300);
   if (!v) return '';
   if (/^https?:\/\/\S+$/i.test(v)) return v;
+  if (/^\/blob\/[A-Z0-9]{4}\/[\w\-.%]+$/.test(v)) return v;
   if (/^[\w\-. ()\/]+$/.test(v) && !v.includes('..')) return 'media/' + v.replace(/^\/?media\//, '');
   return '';
 }
@@ -479,7 +527,7 @@ io.on('connection', sock => {
     const room = {
       code, hostToken: token(), hostSocket: sock.id, phase: 'lobby',
       data, players: [], used: new Set(), fixed: fixedJokers(data), jokers: new Set(), current: null,
-      picker: null, fin: null, settings: { joker: 5, answerTime: 10, guessTime: 90 }, touched: Date.now()
+      picker: null, fin: null, blobs: new Map(), settings: { joker: 5, answerTime: 10, guessTime: 90 }, touched: Date.now()
     };
     rooms.set(code, room);
     sock.data = { code, role: 'host' };
@@ -504,6 +552,7 @@ io.on('connection', sock => {
     try {
       room.data = normalize(data);
       room.fixed = fixedJokers(room.data);
+      room.blobs = new Map();
       cb({ ok: true }); emitState(room);
     } catch (e) { cb({ ok: false, error: e.message }); }
   });
