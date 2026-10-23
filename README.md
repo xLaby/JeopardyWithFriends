@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3.3.2
+# Quiz Show (Jeopardy-Stil) – Version 3.4
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -6,7 +6,7 @@ Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100
 ## Ablauf einer Frage
 1. **Wählen:** Die Spieler sind in fester Reihenfolge dran (Beitrittsreihenfolge, in der Lobby per ▲▼ sortierbar). Wer dran ist, klickt ein Feld. Der Spielleiter kann jederzeit selbst wählen.
 2. **Vorlesen:** Nur der Spielleiter sieht die Frage. Die Spieler sehen Kategorie und Punktwert – und können jetzt einen Joker setzen (**einer pro Frage**, wer zuerst kommt).
-3. **Freigeben:** Mit „Buzzer freigeben" bzw. „Schätzen freigeben" wird die Frage (inkl. Bild/Sound) bei allen sichtbar. Ein hinterlegter Sound startet automatisch.
+3. **Freigeben:** Bei normalen Buzzer-Fragen gibt es zwei Schritte: „Buzzer freigeben" öffnet nur den Buzzer – die Spieler dürfen schon während des Vorlesens drücken, sehen die Frage aber noch nicht. „Frage einblenden" zeigt Text, Bild und Sound (geht vor, während oder nach einem Buzz). „Buzzer + Frage freigeben" macht beides in einem Klick. Bei Reveal- und Schätzfragen wird die Frage mit der Freigabe sofort sichtbar.
 4. **Antworten:** siehe Fragentypen unten.
 5. **Auflösung → Zurück zum Board:** das Feld ist verbraucht, der nächste Spieler ist dran. Ist das Board leer, beginnt das Finale (falls vorhanden), sonst die Siegerehrung.
 
@@ -102,4 +102,4 @@ Node.js ab Version 18, dann im Projektordner `npm install` und `npm start`, dana
 ## Online stellen (Render)
 Projekt in GitHub aktualisieren, Render deployt automatisch neu. Build Command `npm install`, Start Command `npm start`.
 Der Gratis-Server schläft nach etwa 15 Minuten ohne Aufrufe ein; verbundene Spieler halten ihn über einen kleinen Ping alle 5 Minuten wach. Der Spielstand liegt nur im Arbeitsspeicher – vor dem Spielabend einmal die Seite aufrufen.
-Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=9`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.
+Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=10`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.

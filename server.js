@@ -313,7 +313,7 @@ function grantReward(room, cur) {
 }
 function toReveal(room, cur, result) {
   clearTimers(cur);
-  cur.state = 'reveal'; cur.result = result; cur.buzzer = null; cur.window = null;
+  cur.state = 'reveal'; cur.result = result; cur.buzzer = null; cur.window = null; cur.shown = true;
   cur.audio.on = false; cur.deadline = 0; cur.timeUp = false;
   if (cur.typ === 'reveal') cur.stage = 3;
   resolveRisk(room, cur);
@@ -330,7 +330,7 @@ function startTile(room, cat, row) {
     joker: null, riskDone: false, awards: [], winners: [], result: null, reward: false,
     audio: { n: 0, on: false },
     guesses: {}, order: [], revealed: 0, marks: {},
-    openedAt: 0, stage: 0, buzzes: [],
+    openedAt: 0, stage: 0, buzzes: [], shown: false,
     t: {}
   };
   emitState(room);
@@ -511,7 +511,7 @@ function stateFor(room, forHost) {
     if (forHost || cur.state === 'reveal') { current.answer = q.antwort; current.ansBild = q.antwortBild; }
   } else if (cur) {
     const q = curQ(room, cur);
-    const hidden = !forHost && cur.state === 'reading';   // Spieler sehen die Frage erst nach der Freigabe
+    const hidden = !forHost && !cur.shown;   // Spieler sehen die Frage erst, wenn der Host sie einblendet
     const reveal = cur.state === 'reveal';
     current = {
       cat: cur.cat, row: cur.row, value: V(room)[cur.row], typ: cur.typ,
@@ -519,7 +519,7 @@ function stateFor(room, forHost) {
       question: hidden ? '' : q.frage, bild: hidden ? '' : q.bild, sound: hidden ? '' : q.sound,
       hasSound: !!q.sound, einheit: q.einheit,
       joker: room.jokers.has(key(cur.cat, cur.row)),
-      state: cur.state, buzzer: cur.buzzer, pending: !!cur.window, locked: [...cur.locked],
+      state: cur.state, shown: cur.shown, buzzer: cur.buzzer, pending: !!cur.window, locked: [...cur.locked],
       used: cur.joker, audio: cur.audio, timeUp: cur.timeUp,
       left: cur.deadline && (cur.state === 'buzzed' || cur.state === 'open') ? Math.max(0, cur.deadline - Date.now()) : null,
       result: cur.result, winners: cur.winners, reward: cur.reward, awards: cur.awards,
@@ -677,7 +677,7 @@ io.on('connection', sock => {
   });
 
   // Freigabe: Frage wird fuer alle sichtbar, Buzzer bzw. Eingabe geht auf, Sound startet automatisch
-  sock.on('host:open', () => {
+  sock.on('host:open', (opts) => {
     const room = hostRoom();
     const cur = room && room.current;
     if (!cur) return;
@@ -690,7 +690,9 @@ io.on('connection', sock => {
     const q = curQ(room, cur);
     cur.state = 'open';
     cur.openedAt = Date.now();
-    if (q.sound) cur.audio = { n: cur.audio.n + 1, on: true };
+    // Normale Buzzer-Frage: Frage erst auf Wunsch einblenden (der Host liest vor). Reveal und Schaetzen: sofort sichtbar.
+    cur.shown = cur.typ !== 'buzzer' || !!(opts && opts.show);
+    if (q.sound && cur.shown) cur.audio = { n: cur.audio.n + 1, on: true };
     if (cur.typ === 'schaetzen') {
       const ms = (q.zeit || room.settings.guessTime) * 1000;
       cur.deadline = Date.now() + ms;
@@ -698,6 +700,17 @@ io.on('connection', sock => {
         if (room.current === cur && cur.state === 'open') { toReview(room, cur); emitState(room); }
       }, ms);
     }
+    emitState(room);
+  });
+
+  // Frage (Text, Bild, Sound) fuer die Spieler einblenden, unabhaengig vom Buzzer
+  sock.on('host:show', () => {
+    const room = hostRoom();
+    const cur = room && room.current;
+    if (!cur || cur.typ === 'finale' || cur.shown || cur.state === 'reveal') return;
+    cur.shown = true;
+    const q = curQ(room, cur);
+    if (q.sound && cur.state !== 'reading') cur.audio = { n: cur.audio.n + 1, on: true };
     emitState(room);
   });
 

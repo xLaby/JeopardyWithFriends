@@ -1,6 +1,6 @@
 {
   "name": "jeopardy-quiz",
-  "version": "3.3.2",
+  "version": "3.4.0",
   "description": "Jeopardy-Quiz mit Lobby, fairem Buzzer, Jokern und Schaetzfragen fuer Spieler an verschiedenen Standorten",
   "main": "server.js",
   "scripts": { "start": "node server.js" },

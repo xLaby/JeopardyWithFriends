@@ -499,7 +499,7 @@ function stages(c) {
 function card() {
   const c = S.current, host = me.role === 'host', v = c.value;
   const mine = S.players.find(p => p.id === me.pid);
-  const hidden = !host && c.state === 'reading';
+  const hidden = !host && !c.shown;
   const guess = c.typ === 'schaetzen', rev = c.typ === 'reveal';
   const img = c.state === 'reveal' && c.ansBild ? c.ansBild : c.bild;
   const buzzName = c.buzzer ? pname(c.buzzer) : '';
@@ -512,7 +512,8 @@ function card() {
     : 'Der Spielleiter liest die Frage vor. Bis zur Freigabe kann ein Spieler einen Joker setzen.';
   else if (c.state === 'open') status = guess
     ? (host ? `${c.guess.count} ${c.guess.count === 1 ? 'Schätzung' : 'Schätzungen'} abgegeben.` : 'Gib deine Schätzung ab!')
-    : (c.pending ? 'Buzz! Wer war schneller …' : rev ? `Buzzer ist offen – je früher, desto mehr Punkte (jetzt ${fmtMult(c.reveal.mult[stageNow(c)])}).` : 'Buzzer ist offen!');
+    : (c.pending ? 'Buzz! Wer war schneller …' : rev ? `Buzzer ist offen – je früher, desto mehr Punkte (jetzt ${fmtMult(c.reveal.mult[stageNow(c)])}).`
+      : !c.shown ? (host ? 'Buzzer offen – die Spieler sehen die Frage noch nicht.' : 'Buzzer ist offen – du darfst schon während des Vorlesens drücken!') : 'Buzzer ist offen!');
   else if (c.state === 'buzzed') status = c.timeUp ? `Zeit abgelaufen für ${esc(buzzName)}!` : (c.buzzer === me.pid ? 'Du bist dran, antworte jetzt!' : `${esc(buzzName)} antwortet.`);
   else if (c.state === 'review') status = `Antworten werden aufgedeckt (${c.guess.revealed}/${c.guess.total}).`;
   else if (c.state === 'judge') status = host ? (c.guess.total ? 'Markiere pro Schätzung: Gewinner (✓) oder nicht (✗). Mehrere Gewinner sind möglich.' : 'Niemand hat geschätzt – einfach auswerten.') : 'Der Spielleiter bewertet die Schätzungen …';
@@ -594,9 +595,12 @@ function card() {
       ? `<button class="ghost" data-act="snd" data-on="1">${c.audio.n ? 'Sound neu starten' : 'Sound abspielen'}</button>${c.audio.on ? '<button class="ghost" data-act="snd" data-on="0">Sound stoppen</button>' : ''}` : '';
     const more = rev && c.reveal.mode === 'sound' && c.state === 'open' && c.reveal.stage < 3
       ? `<button data-act="stage">Länger abspielen (${c.reveal.soundStages[c.reveal.stage + 1] ? c.reveal.soundStages[c.reveal.stage + 1] + ' s' : 'komplett'})</button>` : '';
-    if (c.state === 'reading') btns = `<button data-act="open">${guess ? 'Schätzen freigeben' : 'Buzzer freigeben'}</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}<button class="ghost" data-act="skip">Frage überspringen</button>`;
-    else if (c.state === 'open') btns = guess ? `<button data-act="skip">Zeit beenden</button>${snd}` : `${more}${snd}<button class="ghost" data-act="skip">Niemand weiß es</button>`;
-    else if (c.state === 'buzzed') btns = `<button class="ok" data-act="judge" data-v="1">Richtig, +${gain(c, c.buzzer)}</button><button class="bad ${c.timeUp ? 'hl' : ''}" data-act="judge" data-v="0">Falsch, −${penalty(c, c.buzzer, v)}</button>${snd}`;
+    const showBtn = !c.shown && c.state !== 'reveal' && c.typ === 'buzzer' && c.state !== 'reading' ? '<button data-act="show">Frage einblenden</button>' : '';
+    if (c.state === 'reading') btns = guess || rev
+      ? `<button data-act="open">${guess ? 'Schätzen freigeben' : 'Buzzer freigeben'}</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}<button class="ghost" data-act="skip">Frage überspringen</button>`
+      : `<button data-act="open">Buzzer freigeben</button><button class="ghost" data-act="openshow">Buzzer + Frage freigeben</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}<button class="ghost" data-act="skip">Frage überspringen</button>`;
+    else if (c.state === 'open') btns = guess ? `<button data-act="skip">Zeit beenden</button>${snd}` : `${showBtn}${more}${snd}<button class="ghost" data-act="skip">Niemand weiß es</button>`;
+    else if (c.state === 'buzzed') btns = `${showBtn}<button class="ok" data-act="judge" data-v="1">Richtig, +${gain(c, c.buzzer)}</button><button class="bad ${c.timeUp ? 'hl' : ''}" data-act="judge" data-v="0">Falsch, −${penalty(c, c.buzzer, v)}</button>${snd}`;
     else if (c.state === 'review') btns = `<button data-act="revealNext">Nächste Antwort aufdecken (${c.guess.revealed + 1}/${c.guess.total})</button>`;
     else if (c.state === 'judge') { const ok = c.guess.list.every(g => typeof (c.guess.marks || {})[g.pid] === 'boolean'); btns = `<button data-act="resolve" ${ok ? '' : 'disabled'}>Auswerten</button>`; }
     else btns = '<button data-act="close">Zurück zum Board</button>';
@@ -606,7 +610,7 @@ function card() {
   const merr = c.sound && mediaError && host ? `<div class="status soft" style="color:#ff9a90">${esc(mediaError)}</div>` : '';
   const showAns = host || c.state === 'reveal';
   const hostAns = showAns ? `<div class="a">Antwort: <b>${esc(c.answer)}${guess ? unit : ''}</b></div>` : '';
-  const hint = host && c.state === 'reading' ? `<div class="status soft">Die Spieler sehen die Frage${c.hasSound ? ' und hören den Sound' : ''} erst nach der Freigabe.${rev ? ' Reveal-Frage: je früher gebuzzert wird, desto höher der Faktor.' : ''}${rev && c.reveal.mode === 'sound' && c.bild ? ' <b>Achtung:</b> Bild und Sound gesetzt – Reveal läuft über den Sound, das Bild wird nicht verpixelt.' : ''}</div>` : '';
+  const hint = host && c.state === 'reading' ? `<div class="status soft">${c.typ === 'buzzer' ? 'Die Spieler sehen die Frage erst, wenn du sie einblendest – der Buzzer kann vorher schon offen sein.' : `Die Spieler sehen die Frage${c.hasSound ? ' und hören den Sound' : ''} erst nach der Freigabe.`}${rev ? ' Reveal-Frage: je früher gebuzzert wird, desto höher der Faktor.' : ''}${rev && c.reveal.mode === 'sound' && c.bild ? ' <b>Achtung:</b> Bild und Sound gesetzt – Reveal läuft über den Sound, das Bild wird nicht verpixelt.' : ''}</div>` : '';
 
   // Bild: bei Reveal-Fragen verpixelt (Stufe steigt mit der Zeit), sonst normal
   let pic = '';
@@ -622,7 +626,7 @@ function card() {
   return `<div class="ov"><div class="card ${cardFresh ? 'enter' : ''}">
     <div class="meta"><span>${esc(c.catName)}, ${v} Punkte</span>${guess ? '<span class="typtag">Schätzfrage</span>' : ''}${rev ? '<span class="typtag">Reveal</span>' : ''}</div>
     ${c.joker ? '<div class="joker">Joker-Feld! Richtig beantwortet gibt einen Joker</div>' : ''}
-    ${hidden ? '<div class="q waiting">Die Frage wird vorgelesen …</div>' : ''}
+    ${hidden ? `<div class="q waiting">${c.state === 'reading' ? 'Die Frage wird vorgelesen …' : 'Die Frage wird vorgelesen – Buzzer ist offen!'}</div>` : ''}
     ${pic}
     ${c.sound && c.audio.on ? '<div class="status soft">Sound läuft …</div>' : ''}
     ${c.question && !hidden ? `<div class="q">${esc(c.question)}</div>` : ''}
@@ -832,6 +836,8 @@ document.addEventListener('click', e => {
     case 'jokermode': jokerMode = !jokerMode; render(); break;
     case 'pick': socket.emit(host ? 'host:pick' : 'player:pick', { cat: +d.c, row: +d.r }); break;
     case 'open': socket.emit('host:open'); break;
+    case 'openshow': socket.emit('host:open', { show: true }); break;
+    case 'show': socket.emit('host:show'); break;
     case 'preview': previewing = true; playMedia(S.current.sound, 0); render(); break;
     case 'stage': socket.emit('host:stage'); break;
     case 'judge': socket.emit('host:judge', { correct: d.v === '1' }); break;
