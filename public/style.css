@@ -195,7 +195,12 @@ button.chip{box-shadow:none}
 .glist li b{font-family:var(--display);font-weight:400;color:var(--gold-l)}
 .glist li.hid{opacity:.5;border:1px dashed rgba(255,241,208,.35)}
 .glist li.win{background:rgba(65,194,122,.22);border:2px solid var(--ok)}
-.glist li.click{cursor:pointer} .glist li.click:hover{background:rgba(245,185,46,.22)}
+.glist li.lose{opacity:.75}
+.glist li .val{display:flex;align-items:center;gap:10px}
+.glist li .marks{display:flex;gap:4px}
+.glist li .marks button{padding:.25em .6em;font-size:1rem;opacity:.55}
+.glist li .marks button.on{opacity:1;box-shadow:0 0 0 2px var(--cream)}
+.glist li .mk{font-size:1.3rem;min-width:1.2em;text-align:center;font-family:var(--body)}
 
 /* Joker-Karten */
 .jcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px}

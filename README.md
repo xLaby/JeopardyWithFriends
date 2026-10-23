@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3.3.1
+# Quiz Show (Jeopardy-Stil) – Version 3.3.2
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -14,8 +14,8 @@ Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100
 **Buzzer (Standard):** Wer zuerst drückt, antwortet mündlich. Danach läuft ein Timer (Standard 10 s). Bei 0 ertönt ein Signal und der Falsch-Knopf blinkt – der Spielleiter entscheidet trotzdem selbst.
 Richtig = voller Wert. Falsch = halber Wert Abzug, und der Spieler ist für diese Frage gesperrt. Dann geht der Buzzer für die anderen wieder auf.
 
-**Schätzfrage** (`"typ": "schaetzen"`): Alle tippen eine Zahl ein (90 s, pro Frage per `"zeit"` änderbar). Der Spielleiter sieht die Schätzungen live, kann die Zeit vorzeitig beenden, deckt die Antworten einzeln auf (die am weitesten entfernte zuerst) und drückt „Auflösung". Wer am nächsten dran ist, bekommt den vollen Wert, alle anderen 0. Bei Gleichstand gewinnen beide. Per Klick auf eine Schätzung lässt sich der Gewinner ändern.
-Eingaben wie `1.200`, `12,50` oder `ca. 300 €` werden verstanden.
+**Schätzfrage** (`"typ": "schaetzen"`): Alle tippen eine Zahl ein (90 s, pro Frage per `"zeit"` änderbar). Der Spielleiter sieht die Schätzungen live und kann die Zeit vorzeitig beenden. Danach deckt er die Antworten einzeln auf (die am weitesten entfernte zuerst), ohne Bewertung. Sind alle offen, markiert er jede Schätzung mit ✓ (Gewinner) oder ✗ – ohne Vorgaben vom Server, mehrere Gewinner sind möglich. Die Spieler sehen die Markierungen live. „Auswerten" geht erst, wenn alle Zeilen markiert sind; jeder Gewinner bekommt den vollen Feldwert, alle anderen 0 – kein Abzug. Rückgängig nimmt die Auswertung zurück.
+Eingaben wie `1.200`, `12,50` oder `ca. 300 €` werden verstanden; die Reihenfolge beim Aufdecken richtet sich nach dem Abstand zur hinterlegten Antwort.
 
 **Reveal** (`"typ": "reveal"`, braucht `bild` oder `sound`): Je früher gebuzzert wird, desto mehr Punkte – vier Stufen mit Faktor **×2 → ×1,5 → ×1,25 → ×1**. Der Abzug bei falscher Antwort bleibt der normale halbe Wert.
 - *Mit Bild:* Das Bild startet stark verpixelt und wird automatisch schärfer, über `"dauer"` Sekunden (Standard 20). Das Verpixeln passiert im Browser, der Server merkt sich nur den Buzz-Zeitpunkt.
@@ -37,7 +37,7 @@ Ein optionaler Block `"finale"` mit beliebig vielen Fragen. Es startet automatis
 - **Serien-Bonus:** Drei richtige Antworten in Folge geben einen Bonus in Höhe des kleinsten Feldwerts, danach alle weiteren drei wieder. Eine falsche Antwort setzt die Serie zurück, Nicht-Antworten nicht. Spieler mit laufender Serie tragen ein 🔥-Badge.
 - **Comeback:** Nach jeder 20. Frage (in der Lobby einstellbar, 0 = aus) bekommt der Letzte eine Jokerwahl – bei Gleichstand alle Letzten.
 - **Zwischenstand:** Ist eine Kategorie komplett abgeräumt, erscheint 9 Sekunden lang ein animiertes Ranking bei allen. Der Spielleiter kann es mit „Weiter" früher schließen.
-- **Rückgängig:** Der Spielleiter kann die letzte Wertung zurücknehmen (Richtig/Falsch, Überspringen, Schätz-Auflösung, Finale-Auswertung) – auch noch nach „Zurück zum Board", bis die nächste Frage gewählt ist. Punkte, Joker, Serie, Board und Zugreihenfolge werden komplett zurückgesetzt.
+- **Rückgängig:** Der Spielleiter kann die letzte Wertung zurücknehmen (Richtig/Falsch, Überspringen, Schätz-Auswertung, Finale-Auswertung) – auch noch nach „Zurück zum Board", bis die nächste Frage gewählt ist. Punkte, Joker, Serie, Board und Zugreihenfolge werden komplett zurückgesetzt.
 
 ## Siegerehrung und Awards
 Podium plus Awards, die der Server aus dem Spielverlauf berechnet: Schnellster Buzzer (kürzeste Reaktionszeit), Treffsicher, Jackpot (größter Einzelgewinn), Dauerdrücker, Schätzkönig, Jokerfreund, Serientäter (längste Serie), Mut zur Lücke. Bei Gleichstand teilen sich mehrere den Award.
@@ -93,7 +93,7 @@ Die Datei `fragen.json` (oder Upload in der Lobby):
 
 - **Board-Größe:** bis zu 15 Kategorien. Die Stufenzahl ergibt sich aus `"werte"` (bis zu 10 Werte) – oder, wenn `"werte"` fehlt, aus der längsten Kategorie mit `"schritt"` (Standard 100: 100, 200, 300 …). Jedes Paket hat also seine eigene Board-Größe.
 - Pflicht pro Frage: `frage`, `antwort`. Optional: `bild`, `sound`, `antwortBild` (Dateiname aus `media/` oder https-Link), `joker`, `typ` (`schaetzen`, `reveal`), `einheit`, `zeit`, `dauer`.
-- Bei Schätzfragen muss `antwort` eine Zahl sein, sonst wählt der Spielleiter den Gewinner per Klick.
+- Bei Schätzfragen sollte `antwort` eine Zahl sein – sie bestimmt die Reihenfolge beim Aufdecken. Gewinner bestimmt der Spielleiter ohnehin selbst.
 - Dateien in `media/` gehören mit ins GitHub-Repository, sonst fehlen sie auf dem Server.
 
 ## Lokal testen
@@ -102,4 +102,4 @@ Node.js ab Version 18, dann im Projektordner `npm install` und `npm start`, dana
 ## Online stellen (Render)
 Projekt in GitHub aktualisieren, Render deployt automatisch neu. Build Command `npm install`, Start Command `npm start`.
 Der Gratis-Server schläft nach etwa 15 Minuten ohne Aufrufe ein; verbundene Spieler halten ihn über einen kleinen Ping alle 5 Minuten wach. Der Spielstand liegt nur im Arbeitsspeicher – vor dem Spielabend einmal die Seite aufrufen.
-Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=8`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.
+Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=9`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.

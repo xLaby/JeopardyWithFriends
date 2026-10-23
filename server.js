@@ -322,14 +322,14 @@ function startTile(room, cat, row) {
   if (room.phase !== 'game' || room.current) return;
   if (tileState(room, cat, row) !== 'free') return;
   const q = qOf(room, cat, row);
-  room.undo = null; room.resolveSnap = null;
+  room.undo = null;
   clearTimeout(room.timer); room.interlude = null;
   room.current = {
     cat, row, typ: q.typ, state: 'reading',
     buzzer: null, locked: new Set(), window: null, deadline: 0, timeUp: false,
     joker: null, riskDone: false, awards: [], winners: [], result: null, reward: false,
     audio: { n: 0, on: false },
-    guesses: {}, order: [], revealed: 0,
+    guesses: {}, order: [], revealed: 0, marks: {},
     openedAt: 0, stage: 0, buzzes: [],
     t: {}
   };
@@ -368,7 +368,7 @@ function toReview(room, cur) {
     const d = id => Number.isFinite(cur.guesses[id].num) ? Math.abs(cur.guesses[id].num - A) : 1e18;
     ids.sort((a, b) => d(b) - d(a));
   }
-  cur.order = ids; cur.revealed = 0; cur.state = 'review';
+  cur.order = ids; cur.revealed = 0; cur.marks = {}; cur.state = ids.length ? 'review' : 'judge';
   cur.audio.on = false; cur.deadline = 0;
 }
 function applyWinners(room, cur, winners) {
@@ -381,21 +381,6 @@ function applyWinners(room, cur, winners) {
   toReveal(room, cur, winners.length ? 'correct' : 'none');
   grantReward(room, cur);
 }
-function resolveGuess(room, cur) {
-  const A = parseNum(curQ(room, cur).antwort);
-  let winners = [], best = Infinity;
-  if (Number.isFinite(A)) {
-    for (const id of cur.order) {
-      const n = cur.guesses[id].num;
-      if (!Number.isFinite(n)) continue;
-      const d = Math.abs(n - A);
-      if (d < best - 1e-9) { best = d; winners = [id]; }
-      else if (Math.abs(d - best) < 1e-9) winners.push(id);
-    }
-  }
-  applyWinners(room, cur, winners);
-}
-
 // ---------- Finale ----------
 // Ablauf pro Frage: intro (Host liest vor) -> decide (20 s: Spielen oder Aussetzen) -> play (Einsatz + Antwort, Schaetzzeit)
 //                   -> review (Aufdecken vom Letzten zum Ersten) -> reveal (Zusammenfassung)
@@ -550,8 +535,8 @@ function stateFor(room, forHost) {
       const entries = order.map(pid => ({ pid, text: cur.guesses[pid].text }));
       current.guess = {
         count: order.length, guessed: Object.keys(cur.guesses),
-        total: cur.order.length, revealed: cur.revealed,
-        list: forHost || reveal ? entries : cur.state === 'review' ? entries.slice(0, cur.revealed) : []
+        total: cur.order.length, revealed: cur.revealed, marks: cur.marks,
+        list: forHost || reveal || cur.state === 'judge' ? entries : cur.state === 'review' ? entries.slice(0, cur.revealed) : []
       };
     }
   }
@@ -608,7 +593,7 @@ io.on('connection', sock => {
       code, hostToken: token(), hostSocket: sock.id, phase: 'lobby',
       data, players: [], used: new Set(), fixed: fixedJokers(data), jokers: new Set(), current: null,
       picker: null, fin: null, blobs: new Map(), settings: { joker: 5, answerTime: 10, guessTime: 90, comeback: 20 }, touched: Date.now(),
-      done: 0, interlude: null, timer: null, notices: [], undo: null, resolveSnap: null
+      done: 0, interlude: null, timer: null, notices: [], undo: null
     };
     rooms.set(code, room);
     sock.data = { code, role: 'host' };
@@ -883,7 +868,7 @@ io.on('connection', sock => {
       else return;
       return emitState(room);
     }
-    if (cur.state === 'reveal' || cur.state === 'review') return;
+    if (cur.state === 'reveal' || cur.state === 'review' || cur.state === 'judge') return;
     room.undo = snapshot(room, cur.state === 'reading' ? 'Frage übersprungen' : cur.typ === 'schaetzen' ? 'Zeit beendet' : 'Niemand weiß es');
     if (cur.state === 'reading') {
       if (cur.joker) {
@@ -910,6 +895,7 @@ io.on('connection', sock => {
     }
     if (cur.state !== 'review') return;
     if (cur.revealed < cur.order.length) cur.revealed++;
+    if (cur.revealed >= cur.order.length) cur.state = 'judge';
     emitState(room);
   });
 
@@ -925,10 +911,10 @@ io.on('connection', sock => {
       finResolve(room, cur);
       return emitState(room);
     }
-    if (cur.typ !== 'schaetzen' || cur.state !== 'review') return;
-    room.undo = room.resolveSnap = snapshot(room, 'Auflösung der Schätzfrage');
-    cur.revealed = cur.order.length;
-    resolveGuess(room, cur);
+    if (cur.typ !== 'schaetzen' || cur.state !== 'judge') return;
+    if (!cur.order.every(pid => typeof cur.marks[pid] === 'boolean')) return;   // erst wenn alles bewertet ist
+    room.undo = snapshot(room, 'Auswertung der Schätzfrage');
+    applyWinners(room, cur, cur.order.filter(pid => cur.marks[pid] === true));
     emitState(room);
   });
 
@@ -936,22 +922,10 @@ io.on('connection', sock => {
   sock.on('host:mark', ({ id, correct } = {}) => {
     const room = hostRoom();
     const cur = room && room.current;
-    if (!cur || cur.typ !== 'finale' || cur.state !== 'judge' || !cur.review.order.includes(id)) return;
-    cur.review.marks[id] = !!correct;
-    emitState(room);
-  });
-
-  // Gewinner einer Schaetzfrage nachtraeglich aendern: alles zuruecknehmen und neu vergeben
-  sock.on('host:setWinner', ({ id } = {}) => {
-    const room = hostRoom();
-    const cur = room && room.current;
-    if (!cur || cur.typ !== 'schaetzen' || cur.state !== 'reveal' || !cur.guesses[id] || !room.resolveSnap) return;
-    const snap = room.resolveSnap;
-    restore(room, snap);
-    room.undo = room.resolveSnap = snap;
-    const c = room.current;
-    c.revealed = c.order.length;
-    applyWinners(room, c, [id]);
+    if (!cur || cur.state !== 'judge') return;
+    if (cur.typ === 'finale') { if (!cur.review.order.includes(id)) return; cur.review.marks[id] = !!correct; }
+    else if (cur.typ === 'schaetzen') { if (!cur.order.includes(id)) return; cur.marks[id] = !!correct; }
+    else return;
     emitState(room);
   });
 
@@ -1046,8 +1020,9 @@ io.on('connection', sock => {
     } else if (cur) {
       cur.locked.delete(id);
       delete cur.guesses[id];
-      cur.order = cur.order.filter(x => x !== id);
+      cur.order = cur.order.filter(x => x !== id); delete cur.marks[id];
       cur.revealed = Math.min(cur.revealed, cur.order.length);
+      if (cur.state === 'review' && cur.revealed >= cur.order.length) cur.state = 'judge';
       cur.winners = cur.winners.filter(x => x !== id);
       if (cur.window) cur.window.candidates = cur.window.candidates.filter(c => c.pid !== id);
       if (cur.buzzer === id) { clearTimeout(cur.t.answer); cur.buzzer = null; cur.timeUp = false; cur.deadline = 0; cur.state = 'open'; }

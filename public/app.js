@@ -479,7 +479,7 @@ function notices() {
 
 function resultText(c, guess) {
   if (c.result === 'skipped') return 'Frage übersprungen.';
-  if (c.result === 'none') return guess ? 'Kein Gewinner – niemand hat eine gültige Schätzung abgegeben.' : 'Niemand hat die Frage gelöst.';
+  if (c.result === 'none') return guess ? 'Kein Gewinner bei dieser Schätzfrage.' : 'Niemand hat die Frage gelöst.';
   const names = c.winners.map(pname).join(' und ');
   let t = guess ? `${esc(names)} ${c.winners.length > 1 ? 'lagen' : 'lag'} am nächsten dran!` : `${esc(names)} hatte recht!`;
   if (c.reward) t += ` Joker-Feld! ${esc(names)} darf sich einen Joker aussuchen.`;
@@ -515,6 +515,7 @@ function card() {
     : (c.pending ? 'Buzz! Wer war schneller …' : rev ? `Buzzer ist offen – je früher, desto mehr Punkte (jetzt ${fmtMult(c.reveal.mult[stageNow(c)])}).` : 'Buzzer ist offen!');
   else if (c.state === 'buzzed') status = c.timeUp ? `Zeit abgelaufen für ${esc(buzzName)}!` : (c.buzzer === me.pid ? 'Du bist dran, antworte jetzt!' : `${esc(buzzName)} antwortet.`);
   else if (c.state === 'review') status = `Antworten werden aufgedeckt (${c.guess.revealed}/${c.guess.total}).`;
+  else if (c.state === 'judge') status = host ? (c.guess.total ? 'Markiere pro Schätzung: Gewinner (✓) oder nicht (✗). Mehrere Gewinner sind möglich.' : 'Niemand hat geschätzt – einfach auswerten.') : 'Der Spielleiter bewertet die Schätzungen …';
   else status = resultText(c, guess);
 
   if ((c.state === 'buzzed' || (guess && c.state === 'open')) && c.left != null)
@@ -567,19 +568,24 @@ function card() {
   }
   if (!host && mine && guess && c.state === 'reading' && c.locked.includes(me.pid)) extra += '<div class="status">Kaffeepause – du setzt bei dieser Frage aus.</div>';
 
-  // Schaetz-Liste (Host sieht sie live, Spieler erst beim Aufdecken)
-  if (guess && (c.state === 'review' || c.state === 'reveal' || (host && c.state === 'open'))) {
-    const list = c.guess.list;
+  // Schaetz-Liste (Host sieht sie live, Spieler erst beim Aufdecken; Bewertung durch den Host)
+  if (guess && (c.state === 'review' || c.state === 'judge' || c.state === 'reveal' || (host && c.state === 'open'))) {
+    const list = c.guess.list, marks = c.guess.marks || {};
     const noGuess = S.players.filter(p => !c.guess.guessed.includes(p.id) && !c.locked.includes(p.id));
-    const click = host && c.state === 'reveal';
+    const judging = c.state === 'judge';
     glist = `<ul class="glist">${list.map((g, i) => {
       const hid = host && c.state === 'review' && i >= c.guess.revealed;
-      return `<li class="${c.winners.includes(g.pid) ? 'win' : ''} ${hid ? 'hid' : ''} ${click ? 'click' : ''}" ${click ? `data-act="setWinner" data-id="${g.pid}" title="Zum Gewinner machen"` : ''}>
-        <span>${plabel(g.pid)}${hid ? ' <small class="muted">(noch verdeckt)</small>' : ''}</span><b>${esc(g.text)}${unit}</b></li>`;
+      const m = marks[g.pid], won = c.state === 'reveal' ? c.winners.includes(g.pid) : m === true;
+      const lost = c.state !== 'reveal' && m === false;
+      const right = judging && host
+        ? `<span class="marks"><button class="ok sm ${m === true ? 'on' : ''}" data-act="mark" data-id="${g.pid}" data-v="1" title="Gewinner">✓</button><button class="bad sm ${m === false ? 'on' : ''}" data-act="mark" data-id="${g.pid}" data-v="0" title="kein Gewinner">✗</button></span>`
+        : (judging || c.state === 'reveal') ? `<span class="mk">${won ? '✓' : lost || (c.state === 'reveal' && c.winners.length) ? '✗' : ''}</span>` : '';
+      return `<li class="${won ? 'win' : ''} ${lost ? 'lose' : ''} ${hid ? 'hid' : ''}">
+        <span>${plabel(g.pid)}${hid ? ' <small class="muted">(noch verdeckt)</small>' : ''}</span><span class="val"><b>${esc(g.text)}${unit}</b>${right}</span></li>`;
     }).join('')}
     ${c.state !== 'open' && noGuess.length ? `<li class="muted"><span>Keine Abgabe</span><span>${esc(noGuess.map(p => p.name).join(', '))}</span></li>` : ''}
     ${!host && c.state === 'review' && c.guess.revealed < c.guess.total ? '<li class="muted"><span>…</span><span>noch ' + (c.guess.total - c.guess.revealed) + ' verdeckt</span></li>' : ''}</ul>`;
-    if (click && list.length > 1) glist += '<div class="status soft">Klick auf eine Schätzung, um den Gewinner zu ändern.</div>';
+    if (judging && host && !list.every(g => typeof marks[g.pid] === 'boolean')) glist += '<div class="status soft">Noch nicht alle Schätzungen bewertet.</div>';
   }
 
   // Host-Knoepfe
@@ -591,7 +597,8 @@ function card() {
     if (c.state === 'reading') btns = `<button data-act="open">${guess ? 'Schätzen freigeben' : 'Buzzer freigeben'}</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}<button class="ghost" data-act="skip">Frage überspringen</button>`;
     else if (c.state === 'open') btns = guess ? `<button data-act="skip">Zeit beenden</button>${snd}` : `${more}${snd}<button class="ghost" data-act="skip">Niemand weiß es</button>`;
     else if (c.state === 'buzzed') btns = `<button class="ok" data-act="judge" data-v="1">Richtig, +${gain(c, c.buzzer)}</button><button class="bad ${c.timeUp ? 'hl' : ''}" data-act="judge" data-v="0">Falsch, −${penalty(c, c.buzzer, v)}</button>${snd}`;
-    else if (c.state === 'review') btns = `<button data-act="revealNext" ${c.guess.revealed >= c.guess.total ? 'disabled' : ''}>Nächste Antwort aufdecken (${c.guess.revealed}/${c.guess.total})</button><button class="${c.guess.revealed >= c.guess.total ? '' : 'ghost'}" data-act="resolve">Auflösung</button>`;
+    else if (c.state === 'review') btns = `<button data-act="revealNext">Nächste Antwort aufdecken (${c.guess.revealed + 1}/${c.guess.total})</button>`;
+    else if (c.state === 'judge') { const ok = c.guess.list.every(g => typeof (c.guess.marks || {})[g.pid] === 'boolean'); btns = `<button data-act="resolve" ${ok ? '' : 'disabled'}>Auswerten</button>`; }
     else btns = '<button data-act="close">Zurück zum Board</button>';
   }
 
@@ -831,7 +838,6 @@ document.addEventListener('click', e => {
     case 'skip': socket.emit('host:skip'); break;
     case 'revealNext': socket.emit('host:revealNext'); break;
     case 'resolve': socket.emit('host:resolve'); break;
-    case 'setWinner': socket.emit('host:setWinner', { id: d.id }); break;
     case 'close': socket.emit('host:close'); break;
     case 'finale': if (confirm('Finale jetzt starten? Das Board wird dann nicht weitergespielt.')) socket.emit('host:finale'); break;
     case 'finaleNext': socket.emit('host:finaleNext'); break;
