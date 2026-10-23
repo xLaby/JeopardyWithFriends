@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3.2
+# Quiz Show (Jeopardy-Stil) – Version 3.3
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -22,8 +22,12 @@ Eingaben wie `1.200`, `12,50` oder `ca. 300 €` werden verstanden.
 - *Mit Sound:* Erst 2 s, dann 5 s, dann 10 s, dann komplett – der Spielleiter schaltet per „Länger abspielen" weiter.
 
 ## Finale mit Einsatz
-Ein optionaler Block `"finale"` mit beliebig vielen Fragen. Es startet automatisch, wenn das Board leer ist, oder jederzeit über „Finale starten".
-Pro Frage: **Einsatz** (45 s, jeder setzt verdeckt 0 bis Punktestand; wer im Minus ist, darf bis 100 setzen) → **Frage zeigen**, alle tippen ihre Antwort (Schätz-/Finalzeit) → **Aufdecken** vom Letzten zum Ersten: Antwort zeigen, richtig/falsch, Einsatz wird dazugezählt oder abgezogen. Wer nicht antwortet, verliert seinen Einsatz automatisch. Danach die nächste Finalfrage oder die Siegerehrung.
+Ein optionaler Block `"finale"` mit beliebig vielen Fragen. Es startet automatisch, wenn das Board leer ist, oder jederzeit über „Finale starten". Ablauf pro Frage:
+1. **Vorlesen:** Nur der Spielleiter sieht die Frage.
+2. **Frage zeigen → Entscheiden (20 s):** Alle sehen die Frage und wählen „Spielen" oder „Aussetzen". Der Spielleiter sieht live, wer was gewählt hat; die Spieler sehen nur, wie viele sich schon entschieden haben. Haben alle gewählt, geht es sofort weiter. Wer sich nicht entscheidet, setzt aus.
+3. **Spielen (Schätz-/Finalzeit, Standard 90 s):** Wer mitspielt, setzt in einem Fenster seinen Einsatz (0 bis Punktestand; im Minus bis 100) und tippt seine Antwort. Beides ist bis zum Ende änderbar. Aussetzer sehen zu, ohne etwas zu gewinnen oder zu verlieren.
+4. **Aufdecken** vom Letzten zum Ersten: Antwort zeigen, richtig/falsch, Einsatz wird dazugezählt oder abgezogen. Wer gespielt, aber nicht geantwortet hat, verliert seinen Einsatz automatisch.
+5. **Zusammenfassung → Nächste Finalfrage** oder Siegerehrung.
 
 ## Spielgefühl
 - **Farbe und Avatar:** Beim Beitreten wählt jeder eine Farbe und ein Emoji (in der Lobby änderbar). Beides erscheint auf Chips, Buzzer, Listen und Siegerehrung.
@@ -96,4 +100,4 @@ Node.js ab Version 18, dann im Projektordner `npm install` und `npm start`, dana
 ## Online stellen (Render)
 Projekt in GitHub aktualisieren, Render deployt automatisch neu. Build Command `npm install`, Start Command `npm start`.
 Der Gratis-Server schläft nach etwa 15 Minuten ohne Aufrufe ein; verbundene Spieler halten ihn über einen kleinen Ping alle 5 Minuten wach. Der Spielstand liegt nur im Arbeitsspeicher – vor dem Spielabend einmal die Seite aufrufen.
-Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=5`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.
+Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=7`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.

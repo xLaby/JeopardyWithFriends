@@ -6,9 +6,9 @@ let S = null, startError = '', coffeePick = false, draft = '', lastCardKey = '',
 let muted = localStorage.getItem('quiz-mute') === '1';
 let audioBlocked = false, lastAudioKey = '', previewing = false, mediaStop = null;
 let openAt = 0, buzzSent = false, lockUntil = 0, lockTimer = null;   // Buzzer-Fairness
-let myGuess = '', myWager = null, jokerMode = false, deadline = 0, menuFor = null;
+let myGuess = '', myWager = null, myDecision = null, jokerMode = false, deadline = 0, menuFor = null;
 let revealT0 = 0, pixStage = -1;                                      // Reveal-Bild
-const pixImgs = {};
+const pixImgs = {}, pixErr = {};
 
 const JOKER = {
   double: { name: 'Doppelte Punkte', icon: '×2', desc: 'Dein Ergebnis bei dieser Frage zählt doppelt – Gewinn wie Verlust.' },
@@ -117,6 +117,7 @@ function drawPix() {
   if (!img) {
     img = pixImgs[src] = new Image();
     img.onload = drawPix;
+    img.onerror = () => { pixErr[src] = true; render(); };
     img.src = src;
     return;
   }
@@ -175,9 +176,10 @@ function effects(prev, s) {
   const c = s.current, p = prev && prev.current;
   if (c && c.typ === 'finale') {
     const fresh = !p || p.typ !== 'finale' || p.idx !== c.idx;
-    if (fresh) { myGuess = ''; myWager = null; SFX.pick(); }
+    if (fresh) { myGuess = ''; myWager = null; myDecision = null; SFX.pick(); }
     else {
-      if (c.state === 'answer' && p.state !== 'answer') SFX.ding();
+      if (c.state === 'decide' && p.state !== 'decide') SFX.ding();
+      if (c.state === 'play' && p.state !== 'play') SFX.pick();
       if (c.review && p.review) {
         const r = c.review, q = p.review;
         if (r.stage === 2 && (q.stage !== 2 || q.i !== r.i)) { const j = r.shown[r.order[r.i]]; (j && j.correct ? SFX.right : SFX.wrong)(); }
@@ -600,15 +602,17 @@ function card() {
   const merr = c.sound && mediaError && host ? `<div class="status soft" style="color:#ff9a90">${esc(mediaError)}</div>` : '';
   const showAns = host || c.state === 'reveal';
   const hostAns = showAns ? `<div class="a">Antwort: <b>${esc(c.answer)}${guess ? unit : ''}</b></div>` : '';
-  const hint = host && c.state === 'reading' ? `<div class="status soft">Die Spieler sehen die Frage${c.hasSound ? ' und hören den Sound' : ''} erst nach der Freigabe.${rev ? ' Reveal-Frage: je früher gebuzzert wird, desto höher der Faktor.' : ''}</div>` : '';
+  const hint = host && c.state === 'reading' ? `<div class="status soft">Die Spieler sehen die Frage${c.hasSound ? ' und hören den Sound' : ''} erst nach der Freigabe.${rev ? ' Reveal-Frage: je früher gebuzzert wird, desto höher der Faktor.' : ''}${rev && c.reveal.mode === 'sound' && c.bild ? ' <b>Achtung:</b> Bild und Sound gesetzt – Reveal läuft über den Sound, das Bild wird nicht verpixelt.' : ''}</div>` : '';
 
   // Bild: bei Reveal-Fragen verpixelt (Stufe steigt mit der Zeit), sonst normal
   let pic = '';
   if (img && !hidden) {
     const pixel = rev && c.reveal.mode === 'bild' && c.state !== 'reveal' && !(host && c.state === 'reading');
     const imgErr = host ? ` onerror="this.outerHTML='<div class=&quot;status soft&quot; style=&quot;color:#ff9a90&quot;>Bild konnte nicht geladen werden – kein direkter Dateilink oder die Seite blockt das Einbetten.</div>'"` : ' onerror="this.remove()"';
-    pic = pixel ? `<canvas class="pix" data-src="${esc(toUrl(img))}" data-stage="${stageNow(c)}" width="16" height="9"></canvas>`
-                : `<img class="qimg" src="${esc(toUrl(img))}" alt=""${imgErr}>`;
+    const u = toUrl(img);
+    if (pixel && pixErr[u]) pic = host ? '<div class="status soft" style="color:#ff9a90">Reveal-Bild konnte nicht geladen werden – kein direkter Dateilink oder die Seite blockt das Einbetten.</div>' : '';
+    else pic = pixel ? `<canvas class="pix" data-src="${esc(u)}" data-stage="${stageNow(c)}" width="16" height="9"></canvas>`
+                     : `<img class="qimg" src="${esc(u)}" alt=""${imgErr}>`;
   }
 
   return `<div class="ov"><div class="card ${cardFresh ? 'enter' : ''}">
@@ -655,54 +659,71 @@ function viewFinale() {
 function finaleCard() {
   const c = S.current, host = me.role === 'host';
   const mine = S.players.find(p => p.id === me.pid);
-  const hidden = !host && c.state === 'wager';
+  const hidden = !host && c.state === 'intro';
   const n = S.players.length;
+  const inPlay = c.participants.includes(me.pid);
   let status = '', btns = '', extra = '', cd = '', box = '', list = '';
+  const nameList = ids => ids.length ? ids.map(id => plabel(id)).join(', ') : '<span class="muted">niemand</span>';
 
-  if (c.state === 'wager') {
-    status = host ? `${c.wagered.length} von ${n} haben ihren Einsatz gesetzt.` : 'Setze deinen Einsatz für diese Frage!';
-    if (host) extra += `<ul class="glist">${S.players.map(p => `<li class="${c.wagered.includes(p.id) ? 'win' : ''}"><span>${plabel(p.id)}</span><b>${c.wagered.includes(p.id) ? c.wagers[p.id] : '–'}</b></li>`).join('')}</ul>`;
-    if (!host && mine) {
-      const max = mine.score > 0 ? mine.score : 100;
-      const done = c.wagered.includes(me.pid);
-      const val = myWager != null ? myWager : Math.min(max, Math.round(max / 2));
-      box = `<div class="wagerbox"><div class="muted">Du hast ${mine.score} Punkte, maximal ${max}.</div>
-        <div class="row" style="margin-top:8px"><input type="number" id="wager" min="0" max="${max}" step="1" value="${val}"><button data-act="wager">${done ? 'Ändern' : 'Setzen'}</button></div>
-        <input type="range" class="range" id="wrange" min="0" max="${max}" step="1" value="${val}">
-        ${done ? `<div class="status soft">Einsatz gesetzt: <b>${myWager}</b>. Bis die Zeit abläuft, kannst du noch ändern.</div>` : ''}</div>`;
+  if (c.state === 'intro') {
+    status = host ? 'Lies die Frage vor. Mit „Frage zeigen" sehen sie alle und haben 20 Sekunden, um sich für Spielen oder Aussetzen zu entscheiden.'
+                  : 'Der Spielleiter liest die Finalfrage vor …';
+  } else if (c.state === 'decide') {
+    status = host ? `${c.decided} von ${n} haben sich entschieden.` : 'Spielen oder aussetzen? Du hast 20 Sekunden.';
+    if (host) extra += `<ul class="glist">${S.players.map(p => { const d = c.decision[p.id]; return `<li class="${d === true ? 'win' : ''} ${d === false ? 'hid' : ''}"><span>${plabel(p.id)}</span><b>${d === true ? 'spielt' : d === false ? 'setzt aus' : '…'}</b></li>`; }).join('')}</ul>`;
+    else if (mine) {
+      const d = c.decision[me.pid];
+      extra += `<div class="status soft">${c.decided} von ${n} haben sich schon entschieden.</div>`;
+      box = `<div class="decide">
+        <button class="ok big ${myDecision === true ? 'on' : ''}" data-act="decide" data-p="1">▶ Spielen</button>
+        <button class="ghost big ${myDecision === false ? 'on' : ''}" data-act="decide" data-p="0">Aussetzen</button>
+        <div class="status soft">${myDecision === true ? 'Du spielst mit – gleich setzt du Einsatz und Antwort.' : myDecision === false ? 'Du setzt diese Frage aus. Bis die Zeit abläuft, kannst du noch umentscheiden.' : 'Wer sich nicht entscheidet, setzt aus.'}</div></div>`;
     }
-  } else if (c.state === 'answer') {
-    status = host ? `${c.answered.length} von ${n} haben geantwortet.` : 'Tippe deine Antwort ein!';
-    if (host) extra += `<ul class="glist">${S.players.map(p => `<li class="${c.answered.includes(p.id) ? 'win' : ''}"><span>${plabel(p.id)} <small class="muted">Einsatz ${c.wagers[p.id] || 0}</small></span><b>${esc(c.answers[p.id] || '–')}</b></li>`).join('')}</ul>`;
-    if (!host && mine) {
-      const done = c.answered.includes(me.pid);
-      box = `<div class="guessbox"><div class="muted">Dein Einsatz: <b>${c.wagered.includes(me.pid) ? (myWager != null ? myWager : '?') : 0}</b></div><div class="row" style="margin-top:6px">
-        <input type="text" id="guess" maxlength="100" placeholder="Deine Antwort" autocomplete="off">
-        <button data-act="guess">${done ? 'Ändern' : 'Abschicken'}</button></div>
-        ${done ? `<div class="status soft">Abgegeben${myGuess ? ': <b>' + esc(myGuess) + '</b>' : ''}. Bis die Zeit abläuft, kannst du noch ändern.</div>` : ''}</div>`;
+  } else if (c.state === 'play') {
+    const k = c.participants.length;
+    status = host ? `${k} ${k === 1 ? 'spielt' : 'spielen'} mit – ${c.answered.length} von ${k} haben geantwortet.`
+                  : inPlay ? 'Setze deinen Einsatz und tippe deine Antwort!' : 'Du setzt diese Frage aus.';
+    if (host) extra += `<ul class="glist">${c.participants.map(pid => `<li class="${c.answered.includes(pid) ? 'win' : ''}"><span>${plabel(pid)} <small class="muted">Einsatz ${c.wagers[pid] === undefined ? '–' : c.wagers[pid]}</small></span><b>${esc(c.answers[pid] || '–')}</b></li>`).join('')}</ul>`;
+    extra += `<div class="status soft">Setzen aus: ${nameList(S.players.filter(p => !c.participants.includes(p.id)).map(p => p.id))}</div>`;
+    if (!host && mine && inPlay) {
+      const max = mine.score > 0 ? mine.score : 100;
+      const doneW = c.wagered.includes(me.pid), doneA = c.answered.includes(me.pid);
+      const val = myWager != null ? myWager : Math.min(max, Math.round(max / 2));
+      box = `<div class="wagerbox">
+        <div class="muted">Du hast ${mine.score} Punkte, Einsatz maximal ${max}.</div>
+        <div class="row" style="margin-top:8px"><span class="muted" style="min-width:70px">Einsatz</span><input type="number" id="wager" min="0" max="${max}" step="1" value="${val}"></div>
+        <input type="range" class="range" id="wrange" min="0" max="${max}" step="1" value="${val}">
+        <div class="row" style="margin-top:10px"><span class="muted" style="min-width:70px">Antwort</span><input type="text" id="guess" maxlength="100" placeholder="Deine Antwort" autocomplete="off"></div>
+        <div class="row" style="margin-top:10px"><button data-act="play">${doneA ? 'Ändern' : 'Abschicken'}</button></div>
+        ${doneW || doneA ? `<div class="status soft">Gesetzt: Einsatz <b>${doneW ? myWager : 0}</b>${doneA && myGuess ? ', Antwort <b>' + esc(myGuess) + '</b>' : ''}. Bis die Zeit abläuft, kannst du noch ändern.</div>` : ''}</div>`;
     }
   } else {
     const r = c.review;
     const curPid = r.order[r.i];
-    status = c.state === 'reveal' ? 'Alle Antworten sind aufgedeckt.' : r.stage === 0 ? `${esc(pname(curPid))} ist dran …` : r.stage === 1 ? `Antwort von ${esc(pname(curPid))} – richtig oder falsch?` : `${esc(pname(curPid))}: ${r.shown[curPid].correct ? 'richtig!' : 'leider falsch.'}`;
+    status = c.state === 'reveal'
+      ? (c.result === 'none' ? 'Niemand hat gespielt – keine Punkteänderung.' : 'Alle Antworten sind aufgedeckt.')
+      : r.stage === 0 ? `${esc(pname(curPid))} ist dran …` : r.stage === 1 ? `Antwort von ${esc(pname(curPid))} – richtig oder falsch?` : `${esc(pname(curPid))}: ${r.shown[curPid].correct ? 'richtig!' : 'leider falsch.'}`;
     list = `<ul class="finlist">${r.order.map((pid, i) => {
-      const s = r.shown[pid], isCur = c.state === 'review' && i === r.i;
-      const judged = s && s.correct !== undefined;
-      return `<li class="${isCur ? 'cur' : ''} ${judged ? (s.correct ? 'ok' : 'bad') : ''}">
+      const sh = r.shown[pid], isCur = c.state === 'review' && i === r.i;
+      const judged = sh && sh.correct !== undefined;
+      return `<li class="${isCur ? 'cur' : ''} ${judged ? (sh.correct ? 'ok' : 'bad') : ''}">
         <span class="nm">${plabel(pid)}</span>
-        <span class="an">${s ? (s.answer ? esc(s.answer) : '<span class="hid">keine Antwort</span>') : (host ? `<span class="hid">${esc(c.answers[pid] || 'keine Antwort')}</span>` : '<span class="hid">verdeckt</span>')}</span>
-        <span class="wg">${judged ? (s.correct ? '+' : '−') + s.wager : (host ? `<span class="hid">Einsatz ${c.wagers[pid] || 0}</span>` : '')}</span>
-        <span class="rs">${judged ? (s.correct ? '✓' : '✗') : ''}</span></li>`;
+        <span class="an">${sh ? (sh.answer ? esc(sh.answer) : '<span class="hid">keine Antwort</span>') : (host ? `<span class="hid">${esc(c.answers[pid] || 'keine Antwort')}</span>` : '<span class="hid">verdeckt</span>')}</span>
+        <span class="wg">${judged ? (sh.correct ? '+' : '−') + sh.wager : (host ? `<span class="hid">Einsatz ${c.wagers[pid] || 0}</span>` : '')}</span>
+        <span class="rs">${judged ? (sh.correct ? '✓' : '✗') : ''}</span></li>`;
     }).join('')}</ul>`;
+    const out = S.players.filter(p => !c.participants.includes(p.id)).map(p => p.id);
+    if (out.length) list += `<div class="status soft">Ausgesetzt: ${nameList(out)}</div>`;
   }
 
-  if ((c.state === 'wager' || c.state === 'answer') && c.left != null) cd = `<div class="cdwrap"><span class="cd">${fmtTime(Math.ceil(c.left / 1000))}</span></div>`;
+  if ((c.state === 'decide' || c.state === 'play') && c.left != null) cd = `<div class="cdwrap"><span class="cd">${fmtTime(Math.ceil(c.left / 1000))}</span></div>`;
 
   if (host) {
-    const snd = c.hasSound && c.state === 'answer'
+    const snd = c.hasSound && (c.state === 'decide' || c.state === 'play')
       ? `<button class="ghost" data-act="snd" data-on="1">${c.audio.n ? 'Sound neu starten' : 'Sound abspielen'}</button>${c.audio.on ? '<button class="ghost" data-act="snd" data-on="0">Sound stoppen</button>' : ''}` : '';
-    if (c.state === 'wager') btns = `<button data-act="open">Frage zeigen</button>`;
-    else if (c.state === 'answer') btns = `<button data-act="skip">Zeit beenden</button>${snd}`;
+    if (c.state === 'intro') btns = `<button data-act="open">Frage zeigen</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}`;
+    else if (c.state === 'decide') btns = `<button data-act="skip">Weiter (Entscheidung beenden)</button>${snd}`;
+    else if (c.state === 'play') btns = `<button data-act="skip">Zeit beenden</button>${snd}`;
     else if (c.state === 'review') {
       const r = c.review;
       if (r.stage === 0) btns = `<button data-act="revealNext">Antwort von ${esc(pname(r.order[r.i]))} aufdecken</button>`;
@@ -714,12 +735,12 @@ function finaleCard() {
   const blocked = c.sound && c.audio.on && audioBlocked ? '<div class="btns"><button data-act="tapsound">Sound starten</button></div>' : '';
   const showAns = host || c.state === 'reveal';
   const ans = showAns ? `<div class="a">Antwort: <b>${esc(c.answer)}</b></div>` : '';
-  const hint = host && c.state === 'wager' ? '<div class="status soft">Die Spieler sehen die Frage erst, wenn du sie zeigst. Wer nichts setzt, setzt 0.</div>' : '';
+  const hint = host && c.state === 'intro' ? '<div class="status soft">Die Spieler sehen die Frage erst, wenn du sie zeigst.</div>' : '';
   const img = c.state === 'reveal' && c.ansBild ? c.ansBild : c.bild;
 
   return `<div class="ov"><div class="card ${cardFresh ? 'enter' : ''}">
     <div class="meta"><span>${esc(c.catName)} – Frage ${c.idx + 1} von ${c.total}</span><span class="typtag">Finale</span></div>
-    ${hidden ? '<div class="q waiting">Erst der Einsatz, dann die Frage …</div>' : ''}
+    ${hidden ? '<div class="q waiting">Die Finalfrage wird vorgelesen …</div>' : ''}
     ${img && !hidden ? `<img class="qimg" src="${esc(toUrl(img))}" alt="">` : ''}
     ${c.sound && c.audio.on ? '<div class="status soft">Sound läuft …</div>' : ''}
     ${c.question && !hidden ? `<div class="q">${esc(c.question)}</div>` : ''}
@@ -763,8 +784,9 @@ document.addEventListener('pointerdown', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  if (e.target.id === 'guess') sendGuess();
-  if (e.target.id === 'wager') sendWager();
+  const fin = S && S.current && S.current.typ === 'finale';
+  if (e.target.id === 'guess') { if (fin) sendWager(); sendGuess(); }
+  if (e.target.id === 'wager') { sendWager(); if (fin) sendGuess(); }
   if (e.target.id === 'adjv') { const b = document.querySelector('[data-act="adjcustom"]'); if (b) b.click(); }
 });
 document.addEventListener('input', e => {
@@ -830,6 +852,8 @@ document.addEventListener('click', e => {
     case 'pickJoker': socket.emit('player:pickJoker', { type: d.t }); break;
     case 'guess': sendGuess(); break;
     case 'wager': sendWager(); break;
+    case 'play': sendWager(); sendGuess(); break;
+    case 'decide': myDecision = d.p === '1'; socket.emit('player:decide', { play: myDecision }); render(); break;
     case 'menu': menuFor = menuFor === d.id ? null : d.id; render(); break;
     case 'adj': socket.emit('host:adjust', { id: d.id, delta: +d.d }); break;
     case 'adjcustom': { const v = document.getElementById('adjv'); const n = Number(v && v.value); if (Number.isFinite(n) && n !== 0) socket.emit('host:adjust', { id: d.id, delta: n }); break; }

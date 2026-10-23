@@ -250,6 +250,12 @@ button.chip{box-shadow:none}
 .wagerbox input{font-size:1.4rem;max-width:220px}
 .wagerbox .range{width:100%;max-width:420px;accent-color:var(--gold);margin-top:8px}
 
+/* Finale: Spielen oder Aussetzen */
+.decide{margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.decide button.big{font-size:1.3rem;padding:.8em 1.6em}
+.decide button.on{box-shadow:0 0 0 3px var(--cream),0 0 18px rgba(245,185,46,.6)}
+.decide .status{flex-basis:100%;margin-top:4px}
+
 /* Awards auf der Siegerehrung */
 .awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:18px;text-align:left}
 .award{padding:12px 14px;border-radius:12px;background:rgba(13,15,46,.85);border:2px solid rgba(245,185,46,.4)}

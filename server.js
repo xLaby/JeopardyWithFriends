@@ -16,7 +16,7 @@ const MAX_JOKERS = 3;          // so viele Joker kann ein Spieler gleichzeitig b
 const BUZZ_WINDOW = 250;       // ms: nach dem ersten Buzz werden weitere gesammelt, kuerzeste Reaktionszeit gewinnt
 const REVEAL_MULT = [2, 1.5, 1.25, 1];   // Punktfaktor je Reveal-Stufe (frueh buzzern lohnt sich)
 const SOUND_STAGES = [2, 5, 10, 0];      // Sekunden pro Sound-Stufe, 0 = komplett
-const WAGER_TIME = 45;         // Sekunden fuer den Finale-Einsatz
+const DECIDE_TIME = 20;        // Sekunden, um sich bei einer Finalfrage fuer Spielen oder Aussetzen zu entscheiden
 const MAX_UPLOAD = 40 * 1024 * 1024;   // Sofort-Paket: eingebettete Medien insgesamt
 const STREAK_EVERY = 3;        // alle drei richtigen Antworten in Folge gibt es einen Bonus (kleinster Feldwert)
 const INTERLUDE_MS = 9000;     // Zwischenstand nach einer abgeraeumten Kategorie
@@ -397,6 +397,8 @@ function resolveGuess(room, cur) {
 }
 
 // ---------- Finale ----------
+// Ablauf pro Frage: intro (Host liest vor) -> decide (20 s: Spielen oder Aussetzen) -> play (Einsatz + Antwort, Schaetzzeit)
+//                   -> review (Aufdecken vom Letzten zum Ersten) -> reveal (Zusammenfassung)
 const maxWager = p => p.score > 0 ? p.score : 100;   // wer im Minus ist, darf trotzdem 100 setzen
 function startFinale(room) {
   if (!room.data.finale || room.current) return;
@@ -411,32 +413,46 @@ function finaleNext(room) {
   room.undo = null;
   room.fin.idx++;
   if (room.fin.idx >= fin.fragen.length) { room.current = null; room.phase = 'end'; return emitState(room); }
-  const cur = room.current = {
-    typ: 'finale', idx: room.fin.idx, state: 'wager',
-    wagers: {}, answers: {}, review: null, awards: [], result: null,
-    deadline: Date.now() + WAGER_TIME * 1000, audio: { n: 0, on: false }, t: {}
+  room.current = {
+    typ: 'finale', idx: room.fin.idx, state: 'intro',
+    decision: {}, participants: [], wagers: {}, answers: {}, review: null, awards: [], result: null,
+    deadline: 0, audio: { n: 0, on: false }, t: {}
   };
-  cur.t.wager = setTimeout(() => { if (room.current === cur && cur.state === 'wager') { finToAnswer(room, cur); emitState(room); } }, WAGER_TIME * 1000);
   emitState(room);
 }
-function finToAnswer(room, cur) {
+// Frage zeigen: alle sehen sie, 20 s Entscheidung
+function finToDecide(room, cur) {
   clearTimers(cur);
   const q = curQ(room, cur);
-  cur.state = 'answer';
+  cur.state = 'decide';
   if (q.sound) cur.audio = { n: cur.audio.n + 1, on: true };
+  cur.deadline = Date.now() + DECIDE_TIME * 1000;
+  cur.t.decide = setTimeout(() => { if (room.current === cur && cur.state === 'decide') { finToPlay(room, cur); emitState(room); } }, DECIDE_TIME * 1000);
+}
+// Wer spielt, setzt Einsatz und Antwort in einem Fenster
+function finToPlay(room, cur) {
+  clearTimers(cur);
+  cur.participants = room.players.filter(p => cur.decision[p.id] === true).map(p => p.id);
+  if (!cur.participants.length) {
+    cur.state = 'reveal'; cur.result = 'none'; cur.deadline = 0; cur.audio.on = false;
+    cur.review = { order: [], i: 0, stage: 0, judged: {} };
+    return;
+  }
+  const q = curQ(room, cur);
+  cur.state = 'play';
   const ms = (q.zeit || room.settings.guessTime) * 1000;
   cur.deadline = Date.now() + ms;
-  cur.t.answer = setTimeout(() => { if (room.current === cur && cur.state === 'answer') { finToReview(room, cur); emitState(room); } }, ms);
+  cur.t.play = setTimeout(() => { if (room.current === cur && cur.state === 'play') { finToReview(room, cur); emitState(room); } }, ms);
 }
 function finToReview(room, cur) {
   clearTimers(cur);
   cur.state = 'review'; cur.deadline = 0; cur.audio.on = false;
-  const order = [...room.players].sort((a, b) => a.score - b.score).map(p => p.id);   // vom Letzten zum Ersten
+  const order = room.players.filter(p => cur.participants.includes(p.id)).sort((a, b) => a.score - b.score).map(p => p.id);   // vom Letzten zum Ersten
   cur.review = { order, i: 0, stage: 0, judged: {} };
   if (!order.length) { cur.state = 'reveal'; cur.result = 'done'; return; }
   finAutoJudge(room, cur);
 }
-// Spieler ohne Antwort werden automatisch als falsch gewertet (Einsatz weg)
+// Mitspieler ohne Antwort werden automatisch als falsch gewertet (Einsatz weg)
 function finAutoJudge(room, cur) {
   const r = cur.review;
   const pid = r.order[r.i];
@@ -493,7 +509,7 @@ function stateFor(room, forHost) {
   let current = null;
   if (cur && cur.typ === 'finale') {
     const q = curQ(room, cur);
-    const hidden = !forHost && cur.state === 'wager';
+    const hidden = !forHost && cur.state === 'intro';
     const r = cur.review;
     let shown = null;
     if (r) {
@@ -510,6 +526,10 @@ function stateFor(room, forHost) {
       audio: cur.audio, left: cur.deadline ? Math.max(0, cur.deadline - Date.now()) : null,
       wagered: Object.keys(cur.wagers), answered: Object.keys(cur.answers),
       wagers: forHost ? cur.wagers : {}, answers: forHost ? cur.answers : {},
+      // Entscheidung: Host sieht Namen live, Spieler waehrend der 20 s nur Zahlen, danach alle
+      decided: Object.keys(cur.decision).length,
+      decision: forHost || cur.state !== 'decide' ? cur.decision : {},
+      participants: cur.state === 'decide' ? [] : cur.participants,
       review: r ? { order: r.order, i: r.i, stage: r.stage, shown } : null,
       awards: cur.awards, result: cur.result
     };
@@ -687,8 +707,8 @@ io.on('connection', sock => {
     const cur = room && room.current;
     if (!cur) return;
     if (cur.typ === 'finale') {
-      if (cur.state !== 'wager') return;
-      finToAnswer(room, cur);
+      if (cur.state !== 'intro') return;
+      finToDecide(room, cur);
       return emitState(room);
     }
     if (cur.state !== 'reading') return;
@@ -709,7 +729,7 @@ io.on('connection', sock => {
   sock.on('host:sound', ({ on } = {}) => {
     const room = hostRoom();
     const cur = room && room.current;
-    if (!cur || cur.state === 'reading' || cur.state === 'reveal' || cur.state === 'wager') return;
+    if (!cur || cur.state === 'reading' || cur.state === 'reveal' || cur.state === 'intro') return;
     cur.audio = { n: cur.audio.n + (on ? 1 : 0), on: !!on };
     emitState(room);
   });
@@ -795,7 +815,7 @@ io.on('connection', sock => {
     const pid = sock.data.pid;
     if (!player(room, pid)) return;
     if (cur.typ === 'finale') {
-      if (cur.state !== 'answer') return;
+      if (cur.state !== 'play' || !cur.participants.includes(pid)) return;
       const t = str(text, 100);
       if (!t) return;
       cur.answers[pid] = t;
@@ -811,11 +831,23 @@ io.on('connection', sock => {
   sock.on('player:wager', ({ n } = {}) => {
     const room = playerRoom();
     const cur = room && room.current;
-    if (!cur || cur.typ !== 'finale' || cur.state !== 'wager') return;
+    if (!cur || cur.typ !== 'finale' || cur.state !== 'play' || !cur.participants.includes(sock.data.pid)) return;
     const p = player(room, sock.data.pid);
     const w = Math.round(Number(n));
     if (!p || !Number.isFinite(w)) return;
     cur.wagers[p.id] = Math.max(0, Math.min(maxWager(p), w));
+    emitState(room);
+  });
+
+  // Finale: Spielen oder Aussetzen (bis alle entschieden haben oder die Zeit um ist)
+  sock.on('player:decide', ({ play } = {}) => {
+    const room = playerRoom();
+    const cur = room && room.current;
+    if (!cur || cur.typ !== 'finale' || cur.state !== 'decide') return;
+    const p = player(room, sock.data.pid);
+    if (!p) return;
+    cur.decision[p.id] = !!play;
+    if (room.players.every(x => !x.connected || cur.decision[x.id] !== undefined)) finToPlay(room, cur);
     emitState(room);
   });
 
@@ -861,8 +893,8 @@ io.on('connection', sock => {
     const cur = room && room.current;
     if (!cur) return;
     if (cur.typ === 'finale') {
-      if (cur.state === 'wager') finToAnswer(room, cur);
-      else if (cur.state === 'answer') finToReview(room, cur);
+      if (cur.state === 'decide') finToPlay(room, cur);
+      else if (cur.state === 'play') finToReview(room, cur);
       else return;
       return emitState(room);
     }
@@ -997,7 +1029,8 @@ io.on('connection', sock => {
     if (room.picker === id) room.picker = nextPicker(room);
     const cur = room.current;
     if (cur && cur.typ === 'finale') {
-      delete cur.wagers[id]; delete cur.answers[id];
+      delete cur.wagers[id]; delete cur.answers[id]; delete cur.decision[id];
+      cur.participants = cur.participants.filter(x => x !== id);
       if (cur.review) {
         const r = cur.review, wasCurrent = r.order[r.i] === id, idx = r.order.indexOf(id);
         r.order = r.order.filter(x => x !== id); delete r.judged[id];
