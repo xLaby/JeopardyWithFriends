@@ -8,6 +8,7 @@ let audioBlocked = false, lastAudioKey = '', previewing = false, mediaStop = nul
 let openAt = 0, buzzSent = false, lockUntil = 0, lockTimer = null;   // Buzzer-Fairness
 let myGuess = '', myWager = null, myDecision = null, jokerMode = false, deadline = 0, menuFor = null;
 let revealT0 = 0, pixStage = -1;                                      // Reveal-Bild
+let lastTick = 0, shakeCard = false, cardFx = '', scoreAnim = {}, floats = [];   // Effekte
 const pixImgs = {}, pixErr = {};
 
 const JOKER = {
@@ -49,6 +50,7 @@ function ctx() {
 function unlock() {
   if (unlocked) return; unlocked = true;
   try { media.src = SILENT; media.play().catch(() => {}); ctx(); } catch (e) {}
+  updateLobbyMusic();
 }
 document.addEventListener('pointerdown', unlock);
 function tone(freq, t0, dur, type = 'sine', vol = .15) {
@@ -61,7 +63,22 @@ function tone(freq, t0, dur, type = 'sine', vol = .15) {
     o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + .05);
   } catch (e) {}
 }
-const SFX = {
+/* Eigene Sounddateien: liegen sie unter media/sfx/<name>.mp3, werden sie statt der Synth-Toene benutzt */
+const SFX_FILES = { pick: 'feld', buzz: 'buzz', right: 'richtig', wrong: 'falsch', joker: 'joker', use: 'jokereinsatz', timeup: 'zeit', ding: 'ding', stage: 'stufe', finale: 'finale', streak: 'serie', tick: 'tick' };
+const sfxAudio = {};
+Object.entries(SFX_FILES).forEach(([key, file]) => {
+  const a = new Audio('/media/sfx/' + file + '.mp3');
+  a.preload = 'auto';
+  a.addEventListener('canplaythrough', () => { sfxAudio[key] = a; }, { once: true });
+  a.addEventListener('error', () => { delete sfxAudio[key]; });
+});
+function playFile(key) {
+  const a = sfxAudio[key];
+  if (!a || muted) return false;
+  try { const c = a.cloneNode(); c.volume = .7; c.play().catch(() => {}); } catch (e) {}
+  return true;
+}
+const SYNTH = {
   pick: () => { tone(392, 0, .12, 'triangle'); tone(523, .1, .2, 'triangle'); },
   buzz: () => { tone(880, 0, .25, 'square', .1); tone(660, .08, .3, 'square', .07); },
   right: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .1, .35, 'triangle', .18)),
@@ -72,8 +89,22 @@ const SFX = {
   ding: () => { tone(1047, 0, .4, 'sine', .14); },
   stage: () => { tone(660, 0, .1, 'triangle', .12); tone(880, .1, .15, 'triangle', .12); },
   finale: () => [392, 392, 392, 311, 466, 392, 311, 466, 392].forEach((f, i) => tone(f, i * .22, i === 8 ? .6 : .2, 'sawtooth', .1)),
-  streak: () => [659, 784, 988, 1319, 1568].forEach((f, i) => tone(f, i * .08, .3, 'triangle', .16))
+  streak: () => [659, 784, 988, 1319, 1568].forEach((f, i) => tone(f, i * .08, .3, 'triangle', .16)),
+  tick: () => tone(1200, 0, .06, 'square', .08)
 };
+const SFX = {};
+Object.keys(SYNTH).forEach(k => { SFX[k] = () => { if (!playFile(k)) SYNTH[k](); }; });
+// Lobby-Musik (media/sfx/lobby.mp3), laeuft in der Lobby und endet mit dem Spielstart
+const lobbyMusic = new Audio('/media/sfx/lobby.mp3');
+lobbyMusic.loop = true; lobbyMusic.volume = .35;
+let lobbyOk = false;
+lobbyMusic.addEventListener('canplaythrough', () => { lobbyOk = true; updateLobbyMusic(); }, { once: true });
+lobbyMusic.addEventListener('error', () => { lobbyOk = false; });
+function updateLobbyMusic() {
+  const want = lobbyOk && !muted && unlocked && S && S.phase === 'lobby';
+  if (want && lobbyMusic.paused) lobbyMusic.play().catch(() => {});
+  if (!want && !lobbyMusic.paused) lobbyMusic.pause();
+}
 // limit > 0: nur die ersten Sekunden abspielen (Sound-Reveal)
 let mediaError = '';
 media.onerror = () => { mediaError = 'Sound konnte nicht geladen werden – kein direkter Dateilink (YouTube & Co. gehen nicht) oder die Seite blockt das Einbetten.'; render(); };
@@ -89,12 +120,12 @@ function playMedia(src, limit) {
 }
 function stopMedia() { clearTimeout(mediaStop); try { media.pause(); } catch (e) {} }
 
-function confetti() {
+function confetti(count = 160, ms = 5500) {
   const cv = document.getElementById('confetti'), g = cv.getContext('2d');
   if (!g) return;
   cv.width = innerWidth; cv.height = innerHeight;
   const cols = ['#f5b92e', '#ffe08a', '#ff9ad5', '#41c27a', '#fff1d0', '#e0443a'];
-  const ps = Array.from({ length: 160 }, () => ({
+  const ps = Array.from({ length: count }, () => ({
     x: Math.random() * cv.width, y: -20 - Math.random() * cv.height * .6, w: 6 + Math.random() * 8, h: 10 + Math.random() * 10,
     vy: 2 + Math.random() * 4, vx: -1.5 + Math.random() * 3, r: Math.random() * 6, vr: -.2 + Math.random() * .4,
     c: cols[Math.floor(Math.random() * cols.length)]
@@ -103,7 +134,7 @@ function confetti() {
   (function frame(t) {
     g.clearRect(0, 0, cv.width, cv.height);
     ps.forEach(p => { p.x += p.vx; p.y += p.vy; p.r += p.vr; g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore(); });
-    if (t - t0 < 5500) requestAnimationFrame(frame); else g.clearRect(0, 0, cv.width, cv.height);
+    if (t - t0 < ms) requestAnimationFrame(frame); else g.clearRect(0, 0, cv.width, cv.height);
   })(t0);
 }
 
@@ -148,6 +179,8 @@ setInterval(() => {
   if (els.length) {
     const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
     els.forEach(el => { el.textContent = fmtTime(left); el.classList.toggle('warn', left <= 3 && left > 0); });
+    const cur = S && S.current;
+    if (cur && cur.state === 'buzzed' && left <= 3 && left > 0 && left !== lastTick) { lastTick = left; SFX.tick(); }
   }
   document.querySelectorAll('.notice[data-exp]').forEach(el => { if (+el.dataset.exp < Date.now()) el.remove(); });
   const c = S && S.current;
@@ -172,8 +205,43 @@ socket.on('disconnect', () => { document.getElementById('banner').innerHTML = '<
 socket.on('kicked', () => { me = null; S = null; save(); startError = 'Du wurdest aus dem Raum entfernt.'; render(); });
 socket.on('state', s => { const prev = S; S = s; effects(prev, s); render(); });
 
+// Grosser Name in Spielerfarbe, wenn jemand buzzert
+function buzzFlash(pid) {
+  const pl = pOf(pid); if (!pl) return;
+  document.querySelectorAll('.buzzflash').forEach(e => e.remove());
+  const el = document.createElement('div');
+  el.className = 'buzzflash'; el.style.setProperty('--pc', pl.color);
+  el.innerHTML = `<div class="bf"><span class="av">${pl.avatar}</span>${esc(pl.name)}</div>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1400);
+}
+// Punkteaenderungen: Zahl zaehlt hoch/runter, Delta fliegt vom Chip weg
+function scoreEffects(prev, s) {
+  if (!prev) return;
+  s.players.forEach(p => {
+    const o = prev.players.find(x => x.id === p.id);
+    if (!o || o.score === p.score) return;
+    scoreAnim[p.id] = { from: o.score, to: p.score, t0: performance.now() };
+    floats.push({ pid: p.id, delta: p.score - o.score, id: Math.random().toString(36).slice(2) });
+  });
+  if (Object.keys(scoreAnim).length) requestAnimationFrame(tickScores);
+}
+function tickScores() {
+  let active = false;
+  Object.entries(scoreAnim).forEach(([pid, a]) => {
+    const k = Math.min(1, (performance.now() - a.t0) / 600);
+    const v = Math.round(a.from + (a.to - a.from) * (1 - Math.pow(1 - k, 3)));
+    document.querySelectorAll(`.chip[data-pid="${pid}"] b`).forEach(b => { b.textContent = v; });
+    if (k >= 1) delete scoreAnim[pid]; else active = true;
+  });
+  if (active) requestAnimationFrame(tickScores);
+}
+const shownScore = p => { const a = scoreAnim[p.id]; if (!a) return p.score; const k = Math.min(1, (performance.now() - a.t0) / 600); return Math.round(a.from + (a.to - a.from) * (1 - Math.pow(1 - k, 3))); };
+
 function effects(prev, s) {
   const c = s.current, p = prev && prev.current;
+  scoreEffects(prev, s);
+  updateLobbyMusic();
   if (c && c.typ === 'finale') {
     const fresh = !p || p.typ !== 'finale' || p.idx !== c.idx;
     if (fresh) { myGuess = ''; myWager = null; myDecision = null; SFX.pick(); }
@@ -182,7 +250,7 @@ function effects(prev, s) {
       if (c.state === 'play' && p.state !== 'play') SFX.pick();
       if (c.review && p.review && c.review.revealed > p.review.revealed) SFX.pick();
       if (c.state === 'judge' && p.state !== 'judge') SFX.ding();
-      if (c.state === 'reveal' && p.state !== 'reveal') (c.awards.some(a => a.delta > 0) ? SFX.right : SFX.wrong)();
+      if (c.state === 'reveal' && p.state !== 'reveal') { const good = c.awards.some(a => a.delta > 0); (good ? SFX.right : SFX.wrong)(); cardFx = good ? 'good' : 'badfx'; }
     }
     if (c.left != null) deadline = Date.now() + c.left;
     if (c.sound && c.audio.on) {
@@ -195,9 +263,12 @@ function effects(prev, s) {
       coffeePick = false; audioBlocked = false; buzzSent = false; myGuess = ''; previewing = false; pixStage = -1;
       SFX.pick(); if (c.joker) setTimeout(SFX.joker, 350);
     } else {
-      if (c.state === 'buzzed' && p.state !== 'buzzed') SFX.buzz();
-      if (c.state === 'reveal' && p.state !== 'reveal') { if (c.result === 'correct') SFX.right(); else if (c.result === 'none') SFX.wrong(); }
-      else if (p.state === 'buzzed' && c.state === 'open') SFX.wrong();
+      if (c.state === 'buzzed' && p.state !== 'buzzed') { SFX.buzz(); shakeCard = true; buzzFlash(c.buzzer); lastTick = 0; }
+      if (c.state === 'reveal' && p.state !== 'reveal') {
+        if (c.result === 'correct') { SFX.right(); cardFx = 'good'; if (c.reward) setTimeout(() => confetti(70, 2500), 150); }
+        else if (c.result === 'none') { SFX.wrong(); cardFx = 'badfx'; }
+      }
+      else if (p.state === 'buzzed' && c.state === 'open') { SFX.wrong(); cardFx = 'badfx'; }
       if (c.state === 'review' && p.state !== 'review') SFX.ding();
       if (c.timeUp && !p.timeUp) SFX.timeup();
       if (c.used && !p.used) SFX.use();
@@ -247,6 +318,12 @@ function render() {
   if (g2) { g2.value = draft; if (keep.sel) { g2.focus(); g2.setSelectionRange(...keep.sel); } }
   const w2 = document.getElementById('wager'); if (w2 && keep.wager !== null) { w2.value = keep.wager; const r = document.getElementById('wrange'); if (r) r.value = keep.wager; }
   const av2 = document.getElementById('adjv'); if (av2 && keep.adj !== null) av2.value = keep.adj;
+  const card = document.querySelector('.card');
+  if (card) {
+    if (shakeCard) { card.classList.add('shake'); shakeCard = false; }
+    if (cardFx) { card.classList.add(cardFx); cardFx = ''; }
+  }
+  if (floats.length) { const ids = floats.map(f => f.id); setTimeout(() => { floats = floats.filter(f => !ids.includes(f.id)); document.querySelectorAll('.float').forEach(e => { if (ids.includes(e.dataset.fid)) e.remove(); }); }, 1400); }
   drawPix();
 }
 
@@ -384,9 +461,10 @@ function chips() {
   const host = me.role === 'host';
   return '<div class="chips">' + S.players.map(p => {
     const cls = `chip ${S.picker === p.id ? 'turn' : ''} ${p.connected ? '' : 'off'} ${p.id === me.pid ? 'me' : ''} ${menuFor === p.id ? 'turn' : ''}`;
-    const inner = `${plabel(p.id)}${jokerBadges(p)}<b>${p.score}</b>`;
-    return host ? `<button class="${cls}" style="--pc:${p.color}" data-act="menu" data-id="${p.id}" title="Punkte, Zug, Joker">${inner}</button>`
-                : `<div class="${cls}" style="--pc:${p.color}">${inner}</div>`;
+    const fl = floats.filter(f => f.pid === p.id).map(f => `<span class="float ${f.delta > 0 ? 'plus' : 'minus'}" data-fid="${f.id}">${f.delta > 0 ? '+' : '−'}${Math.abs(f.delta)}</span>`).join('');
+    const inner = `${plabel(p.id)}${jokerBadges(p)}<b>${shownScore(p)}</b>${fl}`;
+    return host ? `<button class="${cls}" style="--pc:${p.color}" data-pid="${p.id}" data-act="menu" data-id="${p.id}" title="Punkte, Zug, Joker">${inner}</button>`
+                : `<div class="${cls}" style="--pc:${p.color}" data-pid="${p.id}">${inner}</div>`;
   }).join('') + '</div>' + (host ? playerMenu() : '');
 }
 // Host-Menue fuer einen Spieler (ersetzt das prompt-Fenster)
@@ -869,7 +947,7 @@ document.addEventListener('click', e => {
     case 'setpicker': socket.emit('host:setPicker', { id: d.id }); break;
     case 'give': socket.emit('host:giveJoker', { id: d.id, type: d.t }); break;
     case 'take': socket.emit('host:takeJoker', { id: d.id, type: d.t }); break;
-    case 'mute': muted = !muted; localStorage.setItem('quiz-mute', muted ? '1' : '0'); if (muted) stopMedia(); render(); break;
+    case 'mute': muted = !muted; localStorage.setItem('quiz-mute', muted ? '1' : '0'); if (muted) stopMedia(); updateLobbyMusic(); render(); break;
     case 'end': if (confirm('Spiel beenden und zur Siegerehrung?')) socket.emit('host:end'); break;
     case 'leave': me = null; S = null; save(); history.replaceState(null, '', '/'); render(); break;
   }

@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3.4
+# Quiz Show (Jeopardy-Stil) – Version 3.5
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -38,6 +38,13 @@ Ein optionaler Block `"finale"` mit beliebig vielen Fragen. Es startet automatis
 - **Comeback:** Nach jeder 20. Frage (in der Lobby einstellbar, 0 = aus) bekommt der Letzte eine Jokerwahl – bei Gleichstand alle Letzten.
 - **Zwischenstand:** Ist eine Kategorie komplett abgeräumt, erscheint 9 Sekunden lang ein animiertes Ranking bei allen. Der Spielleiter kann es mit „Weiter" früher schließen.
 - **Rückgängig:** Der Spielleiter kann die letzte Wertung zurücknehmen (Richtig/Falsch, Überspringen, Schätz-Auswertung, Finale-Auswertung) – auch noch nach „Zurück zum Board", bis die nächste Frage gewählt ist. Punkte, Joker, Serie, Board und Zugreihenfolge werden komplett zurückgesetzt.
+
+## Effekte und Sounds
+- **Buzz-Moment:** Wer buzzert, erscheint bei allen eine Sekunde lang groß in seiner Spielerfarbe, die Frage-Karte wackelt kurz.
+- **Punkte:** Jede Änderung zählt animiert hoch oder runter, das Delta („+400" / „−200") fliegt vom Chip weg.
+- **Richtig/Falsch:** grüner Glow bzw. roter Flash der Karte, kleines Konfetti bei einem gewonnenen Joker-Feld.
+- **Ticken** in den letzten drei Sekunden der Antwortzeit.
+- **Eigene Sounds:** Liegt in `media/sfx/` eine Datei mit passendem Namen (`buzz.mp3`, `richtig.mp3`, `falsch.mp3`, `joker.mp3`, `zeit.mp3`, `tick.mp3`, `finale.mp3`, `serie.mp3` …, komplette Liste in `media/sfx/LIESMICH.txt`), wird sie statt des eingebauten Synth-Tons gespielt. `lobby.mp3` läuft als Schleife in der Lobby und endet mit dem Spielstart. Fehlt eine Datei, bleibt alles wie bisher.
 
 ## Siegerehrung und Awards
 Podium plus Awards, die der Server aus dem Spielverlauf berechnet: Schnellster Buzzer (kürzeste Reaktionszeit), Treffsicher, Jackpot (größter Einzelgewinn), Dauerdrücker, Schätzkönig, Jokerfreund, Serientäter (längste Serie), Mut zur Lücke. Bei Gleichstand teilen sich mehrere den Award.
@@ -102,4 +109,4 @@ Node.js ab Version 18, dann im Projektordner `npm install` und `npm start`, dana
 ## Online stellen (Render)
 Projekt in GitHub aktualisieren, Render deployt automatisch neu. Build Command `npm install`, Start Command `npm start`.
 Der Gratis-Server schläft nach etwa 15 Minuten ohne Aufrufe ein; verbundene Spieler halten ihn über einen kleinen Ping alle 5 Minuten wach. Der Spielstand liegt nur im Arbeitsspeicher – vor dem Spielabend einmal die Seite aufrufen.
-Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=10`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.
+Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=11`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.

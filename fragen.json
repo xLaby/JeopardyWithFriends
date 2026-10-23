@@ -15,41 +15,36 @@
       "name": "Geographie",
       "fragen": [
         {
-          "frage": "Welches Land hat die meisten Einwohner?",
-          "antwort": "Indien",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Flag_of_India.svg/250px-Flag_of_India.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Wie heißt die Hauptstadt von Frankreich?",
+          "antwort": "Paris"
         },
         {
-          "frage": "Wie heißt die Hauptstadt von Australien?",
-          "antwort": "Canberra"
+          "frage": "Frage für 200 Punkte (Geographie)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche zwei Länder teilen sich den längsten internationalen Landgrenzverlauf der Welt?",
-          "antwort": "Kanada und die USA"
+          "frage": "Frage für 300 Punkte (Geographie)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welcher Stadtstaat ist vollständig von Italien umgeben und liegt mitten in Rom?",
-          "antwort": "Vatikanstadt"
+          "frage": "Frage für 400 Punkte (Geographie)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "In welchem Land liegt der größte Teil der Atacama-Wüste?",
-          "antwort": "Chile",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/78/Flag_of_Chile.svg/250px-Flag_of_Chile.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 500 Punkte (Geographie)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welches Land ist vollständig von Südafrika umschlossen?",
-          "antwort": "Lesotho",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/Flag_of_Lesotho.svg/250px-Flag_of_Lesotho.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 600 Punkte (Geographie)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welcher Fluss durchquert oder berührt die meisten Länder Europas?",
-          "antwort": "Donau (10 Länder)",
-          "antwortBild": "https://blog.assets.studyflix.de/wp-content/uploads/2022/11/Folie2-9-1024x576.png"
+          "frage": "Frage für 700 Punkte (Geographie)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welches südamerikanische Land wird vom Äquator durchquert und ist nach ihm benannt?",
-          "antwort": "Ecuador",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e8/Flag_of_Ecuador.svg/960px-Flag_of_Ecuador.svg.png?utm_source=de.wikipedia.org&utm_campaign=index&utm_content=thumbnail"
+          "frage": "Frage für 800 Punkte (Geographie)",
+          "antwort": "Antwort"
         }
       ]
     },
@@ -57,68 +52,59 @@
       "name": "Was höre ich da?",
       "fragen": [
         {
-          "frage": "Woher kommt dieser Song, dieses Intro oder dieses Theme?",
-          "antwort": "Jujutsu Kaisen",
-          "typ": "reveal",
-          "dauer": 20,
-          "sound": "https://mp3tourl.com/audio/1792739272765-d89458ab-da4a-4645-a3e7-027884a84cb9.mp3",
-          "antwortBild": "https://cdn.xzone.de/p/aaa/kniha-jujutsu-kaisen-the-official-anime-guide-season-1-eng/kniha-jujutsu-kaisen-the-official-anime-guide-season-1-eng-1280w.webp"
+          "frage": "Welcher Film beginnt mit diesem Intro?",
+          "antwort": "Star Wars",
+          "sound": "intro1.mp3",
+          "typ": "reveal"
         },
         {
-          "frage": "Woher kommt dieser Song, dieses Intro oder dieses Theme?",
-          "antwort": "Peaky Blinders",
+          "frage": "Frage für 200 Punkte (Was höre ich da?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "sound": "https://mp3tourl.com/audio/1792739473956-947d6bf0-3161-4996-983d-55315837f185.mp3",
-          "antwortBild": "https://m.media-amazon.com/images/M/MV5BOGM0NGY3ZmItOGE2ZC00OWIxLTk0N2EtZWY4Yzg3ZDlhNGI3XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"
+          "sound": ""
         },
         {
-          "frage": "Woher kommt dieser Song, dieses Intro oder dieses Theme?",
-          "antwort": "Pirates of the Caribbean 3",
+          "frage": "Frage für 300 Punkte (Was höre ich da?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "sound": "https://mp3tourl.com/audio/1792739936920-4758ea42-0d75-4653-bae6-c5c2233701ec.mp3",
-          "antwortBild": "https://m.media-amazon.com/images/I/81pkokqHLGL._AC_UF894,1000_QL80_.jpg"
+          "sound": ""
         },
         {
-          "frage": "Woher kommt dieser Song, dieses Intro oder dieses Theme?",
-          "antwort": "A-Team",
+          "frage": "Frage für 400 Punkte (Was höre ich da?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "sound": "https://videotourl.com/audio/1792740116546-00d6697d-e0b8-4184-a33c-b05aa03388ba.mp3",
-          "antwortBild": "https://m.media-amazon.com/images/I/91rZVzXPcgS._AC_UF894,1000_QL80_.jpg"
+          "sound": ""
         },
         {
-          "frage": "Woher kommt dieser Song, dieses Intro oder dieses Theme?",
-          "antwort": "Kuzco's Königsklasse",
+          "frage": "Frage für 500 Punkte (Was höre ich da?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "sound": "https://videotourl.com/audio/1792740406400-d0d1ab3e-becf-4697-9a8e-3b481a8bf1d2.mp3",
-          "antwortBild": "https://bilder.fernsehserien.de/sendung/hr/v10221.png"
+          "sound": ""
         },
         {
-          "frage": "Woher kommt dieser Song, dieses Intro oder dieses Theme?",
-          "antwort": "My Hero Academia",
+          "frage": "Frage für 600 Punkte (Was höre ich da?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "sound": "https://videotourl.com/audio/1792741695988-af9cd139-e992-4f60-b242-b0a77dc33d61.mp3",
-          "antwortBild": "https://m.media-amazon.com/images/M/MV5BY2QzODA5OTQtYWJlNi00ZjIzLThhNTItMDMwODhlYzYzMjA2XkEyXkFqcGc@._V1_.jpg"
+          "sound": ""
         },
         {
-          "frage": "Woher kommt dieser Song, dieses Intro oder dieses Theme?",
-          "antwort": "SPY x FAMILY",
+          "frage": "Frage für 700 Punkte (Was höre ich da?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "sound": "https://videotourl.com/audio/1792741410072-ac67fe41-769e-47e9-a809-38f9a544b117.mp3",
-          "antwortBild": "https://m.media-amazon.com/images/M/MV5BZDkwNjc0NWEtNzJlOC00N2YwLTk4MjktZGFlZDE2Y2QzOWI0XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"
+          "sound": ""
         },
         {
-          "frage": "Woher kommt dieser Song, dieses Intro oder dieses Theme?",
-          "antwort": "Der Hobbit - Das Lied der Zwerge",
+          "frage": "Frage für 800 Punkte (Was höre ich da?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "sound": "https://mp3tourl.com/audio/1792739705868-5a9926ce-7ac8-4e11-ab9d-fa8192a8f664.mp3",
-          "antwortBild": "https://www.kinderundjugendmedien.de/images/filme/img/Jackson_HobbitUnerwarteteReise_cover.jpg"
+          "sound": ""
         }
       ]
     },
@@ -126,68 +112,60 @@
       "name": "Guess The Price",
       "fragen": [
         {
-          "frage": "Dose Pepsi (0,33 l) aus 2007",
-          "antwort": "0,35",
+          "frage": "Was kostet ein Liter Milch im Supermarkt (Durchschnitt 2026)?",
+          "antwort": "1,19",
           "typ": "schaetzen",
           "einheit": "€",
-          "zeit": 90,
-          "antwortBild": "https://www.cocacoladosen.de/Sammlung/Handzettel/Penny_10-26.jpg"
+          "zeit": 90
         },
         {
-          "frage": "Yu-Gi-Oh! Exodia, die Verbotene LOB 1. Edition",
-          "antwort": "10869,62",
+          "frage": "Frage für 200 Punkte (Guess The Price)",
+          "antwort": "0",
           "typ": "schaetzen",
           "einheit": "€",
-          "zeit": 90,
-          "bild": "https://d2dphffqb1by21.cloudfront.net/assets/guess-the-price/trading-cards/images/yugioh-exodia-the-forbidden-one-lob-1st-edition.webp"
+          "zeit": 90
         },
         {
-          "frage": "Revenant Supercarrier aus Eve Online",
-          "antwort": "9000",
+          "frage": "Frage für 300 Punkte (Guess The Price)",
+          "antwort": "0",
           "typ": "schaetzen",
           "einheit": "€",
-          "zeit": 90,
-          "bild": "https://images.mein-mmo.de/medien/2022/03/eve-online-revenant.jpg"
+          "zeit": 90
         },
         {
-          "frage": "★ Gut Knife | Lore Factory New",
-          "antwort": "112",
+          "frage": "Frage für 400 Punkte (Guess The Price)",
+          "antwort": "0",
           "typ": "schaetzen",
           "einheit": "€",
-          "zeit": 90,
-          "bild": "https://cdn.csgoskins.gg/public/uih/products/aHR0cHM6Ly9jZG4uY3Nnb3NraW5zLmdnL3B1YmxpYy9pbWFnZXMvYnVja2V0cy9lY29uL2RlZmF1bHRfZ2VuZXJhdGVkL3dlYXBvbl9rbmlmZV9ndXRfY3VfZ3V0X2xvcmVfbGlnaHQuMDViYzk3NGJjNmIwMDAxMzFmMWZhMjY3YzkzYjJmODQ1YWNhNTA3NC5wbmc-/auto/auto/85/notrim/5895eae0c6aeefa95e42014b0cebcc84.webp"
+          "zeit": 90
         },
         {
-          "frage": "AK-47 | Fire Serpent Factory New",
-          "antwort": "1992",
+          "frage": "Frage für 500 Punkte (Guess The Price)",
+          "antwort": "0",
           "typ": "schaetzen",
           "einheit": "€",
-          "zeit": 90,
-          "bild": "https://cdn.csgoskins.gg/public/uih/products/aHR0cHM6Ly9jZG4uY3Nnb3NraW5zLmdnL3B1YmxpYy9pbWFnZXMvYnVja2V0cy9lY29uL2RlZmF1bHRfZ2VuZXJhdGVkL3dlYXBvbl9hazQ3X2N1X2ZpcmVzZXJwZW50X2FrNDdfYnJhdm9fbGlnaHQuOWZkZWIzZGJkNGYwYmFjNzQ1ZmY4NDYyZTA3MzFhNjAwM2Q2Mzg2My5wbmc-/auto/auto/85/notrim/12c83ab03525ee3c9835b559c19042e3.webp"
+          "zeit": 90
         },
         {
-          "frage": "Welchen Marktwert hat Martin Ødegaard (ZOM bei Arsenal)",
-          "antwort": "80000000",
+          "frage": "Frage für 600 Punkte (Guess The Price)",
+          "antwort": "0",
           "typ": "schaetzen",
           "einheit": "€",
-          "zeit": 90,
-          "bild": "https://cdn.prod.www.spiegel.de/images/bc5390d6-a342-4612-8f28-5262cc175e32_w1200_r1_fpx54_fpy43.jpg"
+          "zeit": 90
         },
         {
-          "frage": "McLaren P1",
-          "antwort": "1100000",
+          "frage": "Frage für 700 Punkte (Guess The Price)",
+          "antwort": "0",
           "typ": "schaetzen",
           "einheit": "€",
-          "zeit": 90,
-          "bild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/McLaren_P1.jpg/330px-McLaren_P1.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "zeit": 90
         },
         {
-          "frage": "Einfamilienhaus in Weener/Diele",
-          "antwort": "399000",
+          "frage": "Frage für 800 Punkte (Guess The Price)",
+          "antwort": "0",
           "typ": "schaetzen",
           "einheit": "€",
-          "zeit": 90,
-          "bild": "https://mms.immowelt.de/8/c/1/9/8c195ce6-c61e-4f4b-8a29-35f773d5c0d4.jpg?w=1300"
+          "zeit": 90
         }
       ]
     },
@@ -196,59 +174,60 @@
       "fragen": [
         {
           "frage": "In welchem Land steht dieses Gebäude?",
-          "antwort": "Frankreich – Der Eiffelturm",
+          "antwort": "Island",
+          "bild": "ort1.jpg",
+          "antwortBild": "ort1-karte.jpg",
           "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.gebeco.de/wp-content/uploads/2025/09/Frankreich_Paris_LandscapeS.jpg"
+          "dauer": 20
         },
         {
-          "frage": "In welchem Land sind wir – und was ist das?",
-          "antwort": "Italien - Das Kolosseum",
+          "frage": "Frage für 200 Punkte (Wo sind wir?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "bild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Colosseo_2020.jpg/500px-Colosseo_2020.jpg?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "bild": ""
         },
         {
-          "frage": "In welchem Land sind wir – und was ist das?",
-          "antwort": "Deutschland - Schloss Neuschwanstein",
+          "frage": "Frage für 300 Punkte (Wo sind wir?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "bild": "https://parkhotel-wallgau.de/wp-content/uploads/2024/10/ausflugsziel-schloss-neuschwanstein.webp"
+          "bild": ""
         },
         {
-          "frage": "In welchem Land sind wir – und was ist das?",
-          "antwort": "Japan - Mount Fuji",
+          "frage": "Frage für 400 Punkte (Wo sind wir?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "bild": "https://www.merian.de/uploads/media/jalag-content-image/08/10198-japan-fuji-palast.jpg?v=1-0"
+          "bild": ""
         },
         {
-          "frage": "In welchem Land sind wir – und was ist das?",
-          "antwort": "USA (Kalifornien) - Golden Gate Bridge",
+          "frage": "Frage für 500 Punkte (Wo sind wir?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "bild": "https://www.tui.com/blog/wp-content/uploads/2023/12/kalifornien-san-francisco-beitragsbild-adobestock-59741022-luciano-mortula-lgm.jpg"
+          "bild": ""
         },
         {
-          "frage": "In welchem Land sind wir – und was ist das?",
-          "antwort": "Dubai - Burj Khalifa",
+          "frage": "Frage für 600 Punkte (Wo sind wir?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "bild": "https://www.derwesten.de/wp-content/uploads/sites/8/2024/08/sehenswuerdigkeiten-burj-khalifa.jpg?resize=650,433"
+          "bild": ""
         },
         {
-          "frage": "In welchem Land sind wir – und was ist das?",
-          "antwort": "Norwegen - Fjorde",
+          "frage": "Frage für 700 Punkte (Wo sind wir?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "bild": "https://www.merian.de/uploads/media/jalag-content-image/07/8097-norwegen-fjorde-geirangerfjord-istock.jpg?v=1-0"
+          "bild": ""
         },
         {
-          "frage": "In welchem Land sind wir – und was ist das?",
-          "antwort": "Vietnam - Goldene Brücke",
+          "frage": "Frage für 800 Punkte (Wo sind wir?)",
+          "antwort": "Antwort",
           "typ": "reveal",
           "dauer": 20,
-          "bild": "https://image.geo.de/30136702/t/bP/v3/w1440/r1/-/neue-bruecke-vietnam-jpg--77668-.jpg"
+          "bild": ""
         }
       ]
     },
@@ -256,40 +235,36 @@
       "name": "NewsFlash",
       "fragen": [
         {
-          "frage": "Welche Wahlen finden Bald in den USA statt?",
-          "antwort": "Midterms (Zwischenwahlen: ganzes Repräsentantenhaus und ein Drittel des Senats)"
+          "frage": "Frage für 100 Punkte (NewsFlash)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "In welcher Programmiersprache wurden aktuell 2 Sicherheitslücken gefunden?",
-          "antwort": "PHP",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/PHP-logo.svg/250px-PHP-logo.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 200 Punkte (NewsFlash)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie heißt das Modell von Tesla das \"Fliegen\" kann?",
-          "antwort": "TESLA Roadster",
-          "antwortBild": "https://images.euronews.com/articles/stories/09/95/41/74/1536x864_cmsv2_c83b1a8c-3354-5535-9dd4-20d18311a08a-9954174.jpg"
+          "frage": "Frage für 300 Punkte (NewsFlash)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Um wie viel Cent pro Liter sollte die Senkung der Energiesteuer auf Benzin und Diesel ab Oktober 2026 die Preise einschließlich Mehrwertsteuer rechnerisch entlasten?",
-          "antwort": "17 Cent pro Liter"
+          "frage": "Frage für 400 Punkte (NewsFlash)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wer blockiert die Straße von Hormus?",
-          "antwort": "Der Iran",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Flag_of_Iran.svg/250px-Flag_of_Iran.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 500 Punkte (NewsFlash)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche beiden internationalen Konflikte standen im September 2026 bei diplomatischen Gesprächen am Rande der UN-Generalversammlung besonders im Fokus?",
-          "antwort": "Die Kriege im Iran und in der Ukraine"
+          "frage": "Frage für 600 Punkte (NewsFlash)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Was will Donald  Trump aus dem Presseraum im Weißen Haus machen?",
-          "antwort": "Ein Swimming Pool"
+          "frage": "Frage für 700 Punkte (NewsFlash)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Mit welchem US-Chiphersteller bereitete die deutsche Bundesregierung im Oktober 2026 eine Vereinbarung zur stärkeren Nutzung von KI in der Industrie vor?",
-          "antwort": "NVIDIA",
-          "antwortBild": "https://cdn.prod.www.spiegel.de/images/30fb4c5b-da43-4489-8448-5b9f4d72a245_w488_r1.5_fpx37.33_fpy50.jpg"
+          "frage": "Frage für 800 Punkte (NewsFlash)",
+          "antwort": "Antwort"
         }
       ]
     },
@@ -297,60 +272,44 @@
       "name": "Wer ist das?",
       "fragen": [
         {
-          "frage": "Wer ist das?",
-          "antwort": "Angelo",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.toggoeltern.de/fileadmin/_processed_/c/3/csm_Angelo_Key_Character_1080x1920_d1e5a99680.png"
+          "frage": "Frage für 100 Punkte (Wer ist das?)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Wer ist das?",
-          "antwort": "Emma Watson",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://image.tmdb.org/t/p/w500/mf0OANvWYSzU1d8yggrhyw8IbIz.jpg"
+          "frage": "Frage für 200 Punkte (Wer ist das?)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Wer ist das?",
-          "antwort": "Olaf - Frozen",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://i.pinimg.com/736x/6d/8c/a0/6d8ca0ae14fc56156fb562702330bd9d.jpg"
+          "frage": "Frage für 300 Punkte (Wer ist das?)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Wer ist das?",
-          "antwort": "Robert Pattinson",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://i0.web.de/image/546/38884546,pd=1,f=sdata11/robert-pattinson.jpg"
+          "frage": "Frage für 400 Punkte (Wer ist das?)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Wer ist das?",
-          "antwort": "Suguru Geto - Jujutsu Kaisen",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://i.ytimg.com/vi/3HOAB-_R4Os/maxresdefault.jpg"
+          "frage": "Frage für 500 Punkte (Wer ist das?)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Wer ist das?",
-          "antwort": "Pedro Pascal",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://cdn.kinocheck.com/i/ed6t6tpv9d.jpg"
+          "frage": "Frage für 600 Punkte (Wer ist das?)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Wer ist das?",
-          "antwort": "Tom (und das Erdbeermarmeladebrot mit Honig)",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://prod.assets.earlygamecdn.com/images/Tom-und-das-Erdbeermarmeladebrot-mit-Honig.png?transform=galleryItem2x_webp"
+          "frage": "Frage für 700 Punkte (Wer ist das?)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Wer ist das?",
-          "antwort": "Ittetsu Takeda - Haikyuu",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://cdn.anisearch.de/images/character/cover/59/59755_400.webp"
+          "frage": "Frage für 800 Punkte (Wer ist das?)",
+          "antwort": "Antwort",
+          "bild": ""
         }
       ]
     },
@@ -358,46 +317,36 @@
       "name": "Filme/Serien",
       "fragen": [
         {
-          "frage": "In welcher Filmreihe hat der Haupt Bösewicht keine richtige Nase?",
-          "antwort": "Harry Potter",
-          "antwortBild": "https://static.posters.cz/image/1300/122062.jpg"
+          "frage": "Frage für 100 Punkte (Filme/Serien)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Aus welchem Film stammt der Satz „Ich bin der König der Welt!”?",
-          "antwort": "Titanic (1997, Leonardo DiCaprio am Bug)",
-          "antwortBild": "https://m.media-amazon.com/images/M/MV5BZTE2ZjE1MmYtNzhiMC00ZDZkLWEzYjAtM2M2NTM0YjMzMzAyXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"
+          "frage": "Frage für 200 Punkte (Filme/Serien)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Rote oder blaue Pille – welche nimmt Neo in „Matrix”?",
-          "antwort": "rot",
-          "bild": "https://static.digitecgalaxus.ch/im/Files/7/7/0/4/6/5/6/7/the_matrix_blue_pill_red_pill_morpheus_3_2.jpg?impolicy=resize&resizeWidth=430",
-          "antwortBild": "https://www.medienobservationen.lmu.de/artikel/kino/bilder/Sonnenbrille.jpg"
+          "frage": "Frage für 300 Punkte (Filme/Serien)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie heißt die Bar in „How I Met Your Mother”?",
-          "antwort": "MacLaren’s",
-          "antwortBild": "https://m.media-amazon.com/images/M/MV5BNTliMjZmOTAtODUwMS00MTQ1LWE3YTktZGY5Mzk2YTBkNmYxXkEyXkFqcGc@._V1_QL75_UY281_CR31,0,500,281_.jpg"
+          "frage": "Frage für 400 Punkte (Filme/Serien)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie heißt der Vorname von Mr. Bean?",
-          "antwort": "\"Mr.\"",
-          "antwortBild": "https://images-cdn.9gag.com/photo/aNzvLe6_700b.jpg"
+          "frage": "Frage für 500 Punkte (Filme/Serien)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie Viele Jedi wurden bei der Order 66 getötet)",
-          "antwort": "~9850",
-          "typ": "schaetzen"
+          "frage": "Frage für 600 Punkte (Filme/Serien)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "In wie vielen filmen hat Dwayne \"The Rock\" Johnson mitgespielt?",
-          "antwort": "69",
-          "typ": "schaetzen",
-          "antwortBild": "https://www.kinoundco.de/media/cache/newsimg/media/therock_paramount_sony-pictures.jpg"
+          "frage": "Frage für 700 Punkte (Filme/Serien)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie heißt der Hund in „Zurück in die Zukunft”?",
-          "antwort": "Einstein",
-          "antwortBild": "https://i.pinimg.com/736x/73/2f/ac/732fac029f9700c94c1efa1702d7e433.jpg"
+          "frage": "Frage für 800 Punkte (Filme/Serien)",
+          "antwort": "Antwort"
         }
       ]
     },
@@ -405,44 +354,36 @@
       "name": "Allgemeinwissen",
       "fragen": [
         {
-          "frage": "In welchem Jahr endete der Erste Weltkrieg?",
-          "antwort": "1918"
+          "frage": "Frage für 100 Punkte (Allgemeinwissen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welcher Planet ist der größte unseres Sonnensystems?",
-          "antwort": "Jupiter",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Jupiter_OPAL_2024_%28cropped%29.png/330px-Jupiter_OPAL_2024_%28cropped%29.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 200 Punkte (Allgemeinwissen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie heißt der höchste Berg Afrikas?",
-          "antwort": "Kilimandscharo",
-          "antwortBild": "https://img.outdoor-magazin.com/_/bg:FFFFFF/f:best/rt:fill/w:2200/plain/1965577.jpg"
+          "frage": "Frage für 300 Punkte (Allgemeinwissen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welches Metall ist bei Raumtemperatur flüssig?",
-          "antwort": "Quecksilber",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/Pouring_liquid_mercury_bionerd.jpg/250px-Pouring_liquid_mercury_bionerd.jpg?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 400 Punkte (Allgemeinwissen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche Blutgruppe gilt als Universalspender?",
-          "antwort": "0 negativ"
+          "frage": "Frage für 500 Punkte (Allgemeinwissen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie viele Zeitzonen hat Russland?",
-          "antwort": "11",
-          "typ": "schaetzen",
-          "antwortBild": "https://www.fr.de/assets/images/10/87/10087393-1257771634-828863-15e9.jpg"
+          "frage": "Frage für 600 Punkte (Allgemeinwissen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "In welchem Jahr wurde die Berliner Mauer gebaut?",
-          "antwort": "1961",
-          "typ": "schaetzen",
-          "bild": "https://www.deutsches-spionagemuseum.de/wp-content/uploads/2020/08/bundesarchiv_bild_b_145_bild-p061246.jpg"
+          "frage": "Frage für 700 Punkte (Allgemeinwissen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welches ist das einzige Säugetier, das nicht springen kann?",
-          "antwort": "Elefant",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/Elephant_near_ndutu.jpg/330px-Elephant_near_ndutu.jpg?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 800 Punkte (Allgemeinwissen)",
+          "antwort": "Antwort"
         }
       ]
     },
@@ -450,68 +391,44 @@
       "name": "Who's this Pokemon",
       "fragen": [
         {
-          "frage": "Welches Pokemon ist das?",
-          "antwort": "Zapdos",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.pokewiki.de/images/thumb/f/f3/Hauptartwork_145.png/250px-Hauptartwork_145.png",
-          "antwortBild": "https://www.pokewiki.de/images/thumb/f/f3/Hauptartwork_145.png/250px-Hauptartwork_145.png"
+          "frage": "Frage für 100 Punkte (Who's this Pokemon)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Welches Pokemon ist das?",
-          "antwort": "Rettan / Eknas",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.pokewiki.de/images/thumb/5/5e/Hauptartwork_023.png/250px-Hauptartwork_023.png",
-          "antwortBild": "https://www.pokewiki.de/images/thumb/5/5e/Hauptartwork_023.png/250px-Hauptartwork_023.png"
+          "frage": "Frage für 200 Punkte (Who's this Pokemon)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Welches Pokemon ist das?",
-          "antwort": "Ramoth / Volcarona",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.pokewiki.de/images/thumb/c/c7/Hauptartwork_637.png/250px-Hauptartwork_637.png",
-          "antwortBild": "https://www.pokewiki.de/images/thumb/c/c7/Hauptartwork_637.png/250px-Hauptartwork_637.png"
+          "frage": "Frage für 300 Punkte (Who's this Pokemon)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Welches Pokemon ist das?",
-          "antwort": "Lauchzelot / Sirfetch’d",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.pokewiki.de/images/thumb/2/27/Hauptartwork_865.png/128px-Hauptartwork_865.png",
-          "antwortBild": "https://www.pokewiki.de/images/thumb/2/27/Hauptartwork_865.png/128px-Hauptartwork_865.png"
+          "frage": "Frage für 400 Punkte (Who's this Pokemon)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Welches Pokemon ist das?",
-          "antwort": "Sniebel / Sneasel",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.pokewiki.de/images/thumb/2/2d/Hauptartwork_215.png/248px-Hauptartwork_215.png",
-          "antwortBild": "https://www.pokewiki.de/images/thumb/2/2d/Hauptartwork_215.png/248px-Hauptartwork_215.png"
+          "frage": "Frage für 500 Punkte (Who's this Pokemon)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Welches Pokemon ist das?",
-          "antwort": "Psiana / Espeon",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.pokewiki.de/images/thumb/9/90/Hauptartwork_196.png/250px-Hauptartwork_196.png",
-          "antwortBild": "https://www.pokewiki.de/images/thumb/9/90/Hauptartwork_196.png/250px-Hauptartwork_196.png"
+          "frage": "Frage für 600 Punkte (Who's this Pokemon)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Welches Pokemon ist das?",
-          "antwort": "Dartiri / Fletchling",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.pokewiki.de/images/thumb/1/1b/Hauptartwork_661.png/250px-Hauptartwork_661.png",
-          "antwortBild": "https://www.pokewiki.de/images/thumb/1/1b/Hauptartwork_661.png/250px-Hauptartwork_661.png"
+          "frage": "Frage für 700 Punkte (Who's this Pokemon)",
+          "antwort": "Antwort",
+          "bild": ""
         },
         {
-          "frage": "Welches Pokemon ist das?",
-          "antwort": "Katapuldra / Dragapult",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://www.pokewiki.de/images/thumb/f/fd/Hauptartwork_887.png/250px-Hauptartwork_887.png",
-          "antwortBild": "https://www.pokewiki.de/images/thumb/f/fd/Hauptartwork_887.png/250px-Hauptartwork_887.png"
+          "frage": "Frage für 800 Punkte (Who's this Pokemon)",
+          "antwort": "Antwort",
+          "bild": ""
         }
       ]
     },
@@ -519,91 +436,73 @@
       "name": "Musik",
       "fragen": [
         {
-          "frage": "Wie hieß der Sänger von Queen?",
-          "antwort": "Freddie Mercury",
-          "antwortBild": "https://cdn.artphotolimited.com/images/5fb28218bd40b870a885a405/300x300/freddie-mercury-on-stage-at-live-aid-1985.jpg"
+          "frage": "Frage für 100 Punkte (Musik)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche Band wurde mit „Smells Like Teen Spirit” berühmt?",
-          "antwort": "Nirvana",
-          "antwortBild": "https://www.metal-hammer.de/wp-content/uploads/2026/09/24/06/nirvana-nevermind-q.webp"
+          "frage": "Frage für 200 Punkte (Musik)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wer gewann 2010 den Eurovision Song Contest für Deutschland?",
-          "antwort": "Lena Meyer-Landrut",
-          "antwortBild": "https://images.eurovision.de/image/e0bc6d3b-0261-4cf2-8d2a-a01a735941eb/AAABksPvNkI/AAABnSSvrFg/16x9-big/bloglena100.jpg?width=1920"
+          "frage": "Frage für 300 Punkte (Musik)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wer komponierte „Die vier Jahreszeiten”?",
-          "antwort": "Vivaldi",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Vivaldi_La_Cave.jpg/250px-Vivaldi_La_Cave.jpg?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 400 Punkte (Musik)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche deutsche Band landete mit „Wind of Change” einen Welthit?",
-          "antwort": "Scorpions",
-          "antwortBild": "https://media1.jpc.de/image/w1155/front/0/4050538394504.jpg"
+          "frage": "Frage für 500 Punkte (Musik)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "In welchem Jahr starb Elvis Presley?",
-          "antwort": "1977",
-          "typ": "schaetzen",
-          "bild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/82/Elvis_Presley_1970.jpg/250px-Elvis_Presley_1970.jpg?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 600 Punkte (Musik)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie viele Mitglieder hat die K-Pop-Gruppe BTS?",
-          "antwort": "7",
-          "typ": "schaetzen",
-          "antwortBild": "https://www.rollingstone.de/wp-content/uploads/2026/04/BTS_1.jpg"
+          "frage": "Frage für 700 Punkte (Musik)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche Single gilt als die meistverkaufte aller Zeiten?",
-          "antwort": "„White Christmas” von Bing Crosby aus dem Jahr 1942.",
-          "antwortBild": "https://www.rollingstone.de/wp-content/uploads/2013/10/23/12/bing_crosby-white_christmas2_BINARY_331473.jpg"
+          "frage": "Frage für 800 Punkte (Musik)",
+          "antwort": "Antwort"
         }
       ]
     },
     {
-      "name": "Claude erklärt Filme",
+      "name": "Rezensionen",
       "fragen": [
         {
-          "frage": "„Alleinerziehender Vater verliert sein Kind im Straßenverkehr und fragt eine Frau mit Gedächtnisproblemen nach dem Weg. Die Zahnarztszene war unangenehm. Für einen Film über Fische wird erstaunlich wenig geangelt.”",
-          "antwort": "Findet Nemo",
-          "antwortBild": "https://m.media-amazon.com/images/I/91J1p1ATr9L._AC_UF894,1000_QL80_.jpg"
+          "frage": "Frage für 100 Punkte (Rezensionen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "„Junge Katze verliert ihren Vater bei einem Arbeitsunfall, zieht zu einem Schwein und einem Erdmännchen und verweigert jahrelang jede Verantwortung. Der Onkel hat nachvollziehbare Karriereziele. Zu viel Gesang.”",
-          "antwort": "Der König der Löwen",
-          "antwortBild": "https://images.thalia.media/-/BF750-750/1184cde2456c475a862365ebea7f32dc/disney-der-koenig-der-loewen-meine-freunde-gebundene-ausgabe-panini.jpeg"
+          "frage": "Frage für 200 Punkte (Rezensionen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "„Kind wohnt in einem Schrank, bekommt ungewöhnlich viel Post und wechselt auf ein Internat mit mangelhaftem Arbeitsschutz: bewegliche Treppen, ein Hund mit drei Köpfen im Flur, kein Rettungsplan. Der Hausmeister wirkt unglücklich.”",
-          "antwort": "Harry Potter",
-          "antwortBild": "https://media.posterstore.com/site_images/68631ac97d2ae084e18280b6_818168986_WB0001-5.jpg?auto=compress%2Cformat&fit=max&w=3840"
+          "frage": "Frage für 300 Punkte (Rezensionen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "„Junger Landwirt kauft zwei gebrauchte Roboter, von denen einer eine nicht abgeholte Sprachnachricht enthält. Ein älterer Herr im Bademantel überredet ihn zu einer Dienstreise. Die große Raumstation hat einen offensichtlichen Baumangel im Lüftungssystem, der nie behoben wird. Der Film ist Teil 4, es gibt aber keine Teile 1 bis 3 zu diesem Zeitpunkt.”",
-          "antwort": "Star Wars",
-          "antwortBild": "https://m.media-amazon.com/images/I/81CIXJxQ3TL._AC_UF894,1000_QL80_.jpg"
+          "frage": "Frage für 400 Punkte (Rezensionen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "„Mann schläft während der Arbeitszeit, erledigt seinen Auftrag aber in mehreren Unterebenen seines Schlafs, was die Zeiterfassung erschwert. Ein Kreisel wird mehrfach beobachtet. Der Film endet, bevor der Kreisel umfällt, was ich als unvollständig bewerte.”",
-          "antwort": "Inception",
-          "antwortBild": "https://m.media-amazon.com/images/M/MV5BMjQwNGE0MjctMDA3Yi00MGEyLTkyNTAtMjcxMTYxOWE0ZWRkXkEyXkFqcGc@._V1_.jpg"
+          "frage": "Frage für 500 Punkte (Rezensionen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "„Mann mit Schlafstörungen gründet einen Verein, dessen Hauptregel die Mitgliederwerbung erschwert. Es wird viel Seife hergestellt. Am Ende stellt sich heraus, dass die Besetzungsliste eine Person zu lang ist.”",
-          "antwort": "Fight Club",
-          "antwortBild": "https://m.media-amazon.com/images/M/MV5BMzgyZThmZDctNjkwYi00YzU1LWFlY2UtYTIzNmIxZTdlZjVhXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"
+          "frage": "Frage für 600 Punkte (Rezensionen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "„Mann mit unterdurchschnittlichem IQ und überdurchschnittlicher Ausdauer ist zufällig bei mehreren historischen Ereignissen anwesend, ohne davon Notiz zu nehmen. Er gründet ein Garnelenunternehmen, läuft ohne Grund drei Jahre lang quer durchs Land und erzählt Fremden an einer Bushaltestelle ungefragt sein Leben. Die Pralinen-Metapher hält keiner Prüfung stand.”",
-          "antwort": "Forrest Gump",
-          "antwortBild": "https://m.media-amazon.com/images/S/pv-target-images/3826a7333c66634810282e37afc022409d59c9c0c39ddfb78d4c8301927f5e14.jpg"
+          "frage": "Frage für 700 Punkte (Rezensionen)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "„Eine verheiratete Frau zieht um, woraufhin mehrere tausend Männer per Schiff anreisen, um sich darüber zu beschweren. Der beste Kämpfer hat eine bekannte Schwachstelle am Fuß, die niemand ernst nimmt. Die Verteidiger nehmen am Ende ein unangekündigtes Holzpferd ohne Lieferschein entgegen und stellen es in die Innenstadt. Historisch wurde die Belagerung auf wenige Wochen gekürzt.”",
-          "antwort": "Troja",
-          "antwortBild": "https://m.media-amazon.com/images/M/MV5BMjE0NTg3Mzc2M15BMl5BanBnXkFtZTcwODkyOTUyMQ@@._V1_FMjpg_UX1000_.jpg"
+          "frage": "Frage für 800 Punkte (Rezensionen)",
+          "antwort": "Antwort"
         }
       ]
     },
@@ -611,107 +510,73 @@
       "name": "Fußball",
       "fragen": [
         {
-          "frage": "Was ist der Lieblingsverein von Phillip?",
-          "antwort": "FC St. Pauli",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b3/Fc_st_pauli_logo.svg/250px-Fc_st_pauli_logo.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 100 Punkte (Fußball)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie viele WM-Titel hat Brasilien?",
-          "antwort": "5",
-          "typ": "schaetzen",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Brazil.svg/250px-Flag_of_Brazil.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 200 Punkte (Fußball)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welches Land gewann die allererste Fußball-WM 1930?",
-          "antwort": "Uruguay",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Uruguay.svg/250px-Flag_of_Uruguay.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 300 Punkte (Fußball)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welcher Verein ist das?",
-          "antwort": "VfB Stuttgart",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/eb/VfB_Stuttgart_1893_Logo.svg/250px-VfB_Stuttgart_1893_Logo.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/eb/VfB_Stuttgart_1893_Logo.svg/250px-VfB_Stuttgart_1893_Logo.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 400 Punkte (Fußball)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie heißt dieser Fußball Spieler?",
-          "antwort": "Toni Kroos",
-          "bild": "https://www.deutschland.de/sites/default/files/media/image/456162526.jpg",
-          "antwortBild": "https://www.deutschland.de/sites/default/files/media/image/456162526.jpg"
+          "frage": "Frage für 500 Punkte (Fußball)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Für welche Rekordablöse wechselte Neymar 2017 zu Paris Saint-Germain?",
-          "antwort": "222000000",
-          "typ": "schaetzen",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Neymar_PSG.jpg/500px-Neymar_PSG.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=thumbnail&_=20171019002725",
-          "einheit": "€"
+          "frage": "Frage für 600 Punkte (Fußball)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wie heißt dieser Fußball Spieler?",
-          "antwort": "Christoph Kramer",
-          "bild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/33/Christoph_Kramer_2015.jpg/250px-Christoph_Kramer_2015.jpg?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/33/Christoph_Kramer_2015.jpg/250px-Christoph_Kramer_2015.jpg?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 700 Punkte (Fußball)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche Deutschen Spieler haben sich wegen des Drucks nicht getraut gegen Paraguay ins Elfmeter schießen zu gehen, weshalb Jonathan Tah schießen musste?",
-          "antwort": "Waldemar Anton, Nathaniel Brown, Malick Thiaw und Leon Goretzka",
-          "antwortBild": "https://storage.fussballdaten.de/source/1/news/152524/germany-v-paraguay-round-of-32-fifa-world-cup-2026-1-large.jpg"
+          "frage": "Frage für 800 Punkte (Fußball)",
+          "antwort": "Antwort"
         }
       ]
     },
     {
-      "name": "Basti wüsste es!",
+      "name": "Basti wüsste es",
       "fragen": [
         {
-          "frage": "In welchem Jahr wurde Basti geboren?",
-          "antwort": "1997",
-          "typ": "schaetzen"
+          "frage": "Frage für 100 Punkte (Basti wüsste es)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Wofür steht das „GHG” in BastiGHG?",
-          "antwort": "German Hunger Games",
-          "bild": "https://i.ytimg.com/vi/SG_JUV3UkSg/mqdefault.jpg"
+          "frage": "Frage für 200 Punkte (Basti wüsste es)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche zwei Länder haben nahezu identische rot-weiße Flaggen, die sich nur im Seitenverhältnis unterscheiden?",
-          "antwort": "Indonesien und Monaco",
-          "antwortBild": "https://i.ytimg.com/vi/RTlwn5hOaXM/maxresdefault.jpg"
+          "frage": "Frage für 300 Punkte (Basti wüsste es)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Seit welchem Jahr geht Basti jeden einzelnen Tag auf Twitch live?",
-          "antwort": "2016",
-          "typ": "schaetzen"
+          "frage": "Frage für 400 Punkte (Basti wüsste es)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche Flagge ist das?",
-          "antwort": "Niederlande",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Flag_of_the_Netherlands.svg/250px-Flag_of_the_Netherlands.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Flag_of_the_Netherlands.svg/250px-Flag_of_the_Netherlands.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 500 Punkte (Basti wüsste es)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche Flagge ist das?",
-          "antwort": "Kenia",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/250px-Flag_of_Kenya.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/250px-Flag_of_Kenya.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 600 Punkte (Basti wüsste es)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welche Flagge ist das?",
-          "antwort": "Bhutan",
-          "typ": "reveal",
-          "dauer": 20,
-          "bild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/Flag_of_Bhutan.svg/250px-Flag_of_Bhutan.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/Flag_of_Bhutan.svg/250px-Flag_of_Bhutan.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 700 Punkte (Basti wüsste es)",
+          "antwort": "Antwort"
         },
         {
-          "frage": "Welches Land hat als einziges eine Schusswaffe – eine AK-47 – auf seiner Nationalflagge?",
-          "antwort": "Mosambik",
-          "bild": "",
-          "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d0/Flag_of_Mozambique.svg/250px-Flag_of_Mozambique.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+          "frage": "Frage für 800 Punkte (Basti wüsste es)",
+          "antwort": "Antwort"
         }
       ]
     }
@@ -720,31 +585,25 @@
     "name": "Finale",
     "fragen": [
       {
-        "frage": "Wie viele Sterne kann man mit bloßem Auge von einem Ort aus gleichzeitig am Nachthimmel sehen – ohne Lichtverschmutzung, ungefähr?",
-        "antwort": "rund 3.000 (beide Hemisphären zusammen etwa 6.000)",
-        "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Artist%27s_impression_of_the_Milky_Way_%28updated_-_annotated%29.jpg/330px-Artist%27s_impression_of_the_Milky_Way_%28updated_-_annotated%29.jpg?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+        "frage": "Wie viele Bundesländer hat Deutschland?",
+        "antwort": "16"
       },
       {
-        "frage": "Welches Land hat – zusammen mit Russland – mit 14 Staaten die meisten internationalen Landnachbarn weltweit?",
-        "antwort": "China",
-        "antwortBild": "https://upload.wikimedia.org/wikipedia/commons/a/af/Russia_China_Locator.png?utm_source=de.wikipedia.org&utm_campaign=index&utm_content=original"
+        "frage": "Finalfrage 2",
+        "antwort": "Antwort"
       },
       {
-        "frage": "Welcher Komponist vollendete und dirigierte seine weltberühmte 9. Sinfonie im Jahr 1824, obwohl er zu diesem Zeitpunkt bereits vollständig ertaubt war?",
-        "antwort": "Ludwig van Beethoven",
-        "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Beethoven.jpg/250px-Beethoven.jpg?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
+        "frage": "Finalfrage 3",
+        "antwort": "Antwort"
       },
       {
-        "frage": "Welcher Fluss verfügt sowohl über das größte Einzugsgebiet als auch über die größte Wasserführung der Erde?",
-        "antwort": "Amazonas",
-        "bild": "https://image.geo.de/30143564/t/Ts/v3/w1440/r1.5/-/amazonas-brasilien-f-169479615-jpg--81733-.jpg",
-        "antwortBild": "https://image.geo.de/30143564/t/Ts/v3/w1440/r1.5/-/amazonas-brasilien-f-169479615-jpg--81733-.jpg"
+        "frage": "Finalfrage 4",
+        "antwort": "Antwort"
       },
       {
-        "frage": "Wie groß bin ich - Der Spielleiter?",
-        "antwort": "1,82 Meter"
+        "frage": "Finalfrage 5",
+        "antwort": "Antwort"
       }
     ]
-  },
-  "medien": {}
+  }
 }

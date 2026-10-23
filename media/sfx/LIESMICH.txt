@@ -1,0 +1,18 @@
+Eigene Sounds (optional). Liegt hier eine Datei mit dem passenden Namen, wird sie statt des eingebauten Tons benutzt:
+
+  feld.mp3           Feld gewaehlt
+  buzz.mp3           Buzzer gedrueckt
+  richtig.mp3        richtige Antwort / Gewinner
+  falsch.mp3         falsche Antwort / niemand wusste es
+  joker.mp3          Joker gewonnen
+  jokereinsatz.mp3   Joker eingesetzt
+  zeit.mp3           Antwortzeit abgelaufen
+  tick.mp3           Ticken in den letzten 3 Sekunden
+  ding.mp3           Zwischenstand, Aufdecken, Bewertung
+  stufe.mp3          naechste Reveal-Stufe
+  serie.mp3          Serien-Bonus
+  finale.mp3         Finale beginnt
+  lobby.mp3          Musik in der Lobby (laeuft als Schleife, endet mit dem Spielstart)
+
+Kurze Dateien (unter 2 Sekunden, lobby.mp3 ausgenommen), MP3. Kostenlos z. B. bei pixabay.com/sound-effects oder freesound.org.
+Fehlt eine Datei, bleibt der eingebaute Synth-Ton. Die Dateien gehoeren mit ins GitHub-Repository.
