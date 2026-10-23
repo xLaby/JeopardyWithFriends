@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3.3
+# Quiz Show (Jeopardy-Stil) – Version 3.3.1
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -26,8 +26,10 @@ Ein optionaler Block `"finale"` mit beliebig vielen Fragen. Es startet automatis
 1. **Vorlesen:** Nur der Spielleiter sieht die Frage.
 2. **Frage zeigen → Entscheiden (20 s):** Alle sehen die Frage und wählen „Spielen" oder „Aussetzen". Der Spielleiter sieht live, wer was gewählt hat; die Spieler sehen nur, wie viele sich schon entschieden haben. Haben alle gewählt, geht es sofort weiter. Wer sich nicht entscheidet, setzt aus.
 3. **Spielen (Schätz-/Finalzeit, Standard 90 s):** Wer mitspielt, setzt in einem Fenster seinen Einsatz (0 bis Punktestand; im Minus bis 100) und tippt seine Antwort. Beides ist bis zum Ende änderbar. Aussetzer sehen zu, ohne etwas zu gewinnen oder zu verlieren.
-4. **Aufdecken** vom Letzten zum Ersten: Antwort zeigen, richtig/falsch, Einsatz wird dazugezählt oder abgezogen. Wer gespielt, aber nicht geantwortet hat, verliert seinen Einsatz automatisch.
-5. **Zusammenfassung → Nächste Finalfrage** oder Siegerehrung.
+4. **Aufdecken** vom Letzten zum Ersten: Klick für Klick eine Antwort, ohne Bewertung. Einsätze bleiben verdeckt.
+5. **Bewerten:** Sind alle Antworten offen, markiert der Spielleiter jede Zeile mit ✓ oder ✗ – ohne Vorgaben vom Server, mehrere ✓ sind möglich. Die Spieler sehen die Markierungen live, können aber nichts tun. Einzige Voreinstellung: Wer gespielt, aber nichts geantwortet hat, steht auf ✗ (umschaltbar).
+6. **Auswerten:** Erst wenn alle Zeilen bewertet sind, deckt ein Klick die Einsätze auf und verrechnet sie auf einmal. Rückgängig nimmt die ganze Auswertung zurück.
+7. **Nächste Finalfrage** oder Siegerehrung.
 
 ## Spielgefühl
 - **Farbe und Avatar:** Beim Beitreten wählt jeder eine Farbe und ein Emoji (in der Lobby änderbar). Beides erscheint auf Chips, Buzzer, Listen und Siegerehrung.
@@ -35,7 +37,7 @@ Ein optionaler Block `"finale"` mit beliebig vielen Fragen. Es startet automatis
 - **Serien-Bonus:** Drei richtige Antworten in Folge geben einen Bonus in Höhe des kleinsten Feldwerts, danach alle weiteren drei wieder. Eine falsche Antwort setzt die Serie zurück, Nicht-Antworten nicht. Spieler mit laufender Serie tragen ein 🔥-Badge.
 - **Comeback:** Nach jeder 20. Frage (in der Lobby einstellbar, 0 = aus) bekommt der Letzte eine Jokerwahl – bei Gleichstand alle Letzten.
 - **Zwischenstand:** Ist eine Kategorie komplett abgeräumt, erscheint 9 Sekunden lang ein animiertes Ranking bei allen. Der Spielleiter kann es mit „Weiter" früher schließen.
-- **Rückgängig:** Der Spielleiter kann die letzte Wertung zurücknehmen (Richtig/Falsch, Überspringen, Schätz-Auflösung, Finale-Wertung) – auch noch nach „Zurück zum Board", bis die nächste Frage gewählt ist. Punkte, Joker, Serie, Board und Zugreihenfolge werden komplett zurückgesetzt.
+- **Rückgängig:** Der Spielleiter kann die letzte Wertung zurücknehmen (Richtig/Falsch, Überspringen, Schätz-Auflösung, Finale-Auswertung) – auch noch nach „Zurück zum Board", bis die nächste Frage gewählt ist. Punkte, Joker, Serie, Board und Zugreihenfolge werden komplett zurückgesetzt.
 
 ## Siegerehrung und Awards
 Podium plus Awards, die der Server aus dem Spielverlauf berechnet: Schnellster Buzzer (kürzeste Reaktionszeit), Treffsicher, Jackpot (größter Einzelgewinn), Dauerdrücker, Schätzkönig, Jokerfreund, Serientäter (längste Serie), Mut zur Lücke. Bei Gleichstand teilen sich mehrere den Award.
@@ -100,4 +102,4 @@ Node.js ab Version 18, dann im Projektordner `npm install` und `npm start`, dana
 ## Online stellen (Render)
 Projekt in GitHub aktualisieren, Render deployt automatisch neu. Build Command `npm install`, Start Command `npm start`.
 Der Gratis-Server schläft nach etwa 15 Minuten ohne Aufrufe ein; verbundene Spieler halten ihn über einen kleinen Ping alle 5 Minuten wach. Der Spielstand liegt nur im Arbeitsspeicher – vor dem Spielabend einmal die Seite aufrufen.
-Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=7`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.
+Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=8`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.

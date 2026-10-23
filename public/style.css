@@ -246,6 +246,10 @@ button.chip{box-shadow:none}
 .finlist li .wg{font-family:var(--display);color:var(--gold-l);text-align:right}
 .finlist li .rs{font-size:1.4rem;width:1.4em;text-align:center}
 .finlist li .hid{color:var(--muted);font-style:italic;font-family:var(--body);font-size:1rem;font-weight:400}
+.finlist li .rs.marks{width:auto;display:flex;gap:4px}
+.finlist li .rs.marks button{padding:.25em .6em;font-size:1rem;opacity:.55}
+.finlist li .rs.marks button.on{opacity:1;box-shadow:0 0 0 2px var(--cream)}
+.finlist.judging li{grid-template-columns:1.3fr 2fr 1fr auto}
 .wagerbox{margin-top:14px;padding:14px;border-radius:12px;background:rgba(0,0,0,.35)}
 .wagerbox input{font-size:1.4rem;max-width:220px}
 .wagerbox .range{width:100%;max-width:420px;accent-color:var(--gold);margin-top:8px}

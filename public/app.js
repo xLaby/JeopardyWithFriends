@@ -180,12 +180,9 @@ function effects(prev, s) {
     else {
       if (c.state === 'decide' && p.state !== 'decide') SFX.ding();
       if (c.state === 'play' && p.state !== 'play') SFX.pick();
-      if (c.review && p.review) {
-        const r = c.review, q = p.review;
-        if (r.stage === 2 && (q.stage !== 2 || q.i !== r.i)) { const j = r.shown[r.order[r.i]]; (j && j.correct ? SFX.right : SFX.wrong)(); }
-        else if (r.stage === 1 && q.stage !== 1) SFX.pick();
-      }
-      if (c.state === 'reveal' && p.state !== 'reveal') SFX.ding();
+      if (c.review && p.review && c.review.revealed > p.review.revealed) SFX.pick();
+      if (c.state === 'judge' && p.state !== 'judge') SFX.ding();
+      if (c.state === 'reveal' && p.state !== 'reveal') (c.awards.some(a => a.delta > 0) ? SFX.right : SFX.wrong)();
     }
     if (c.left != null) deadline = Date.now() + c.left;
     if (c.sound && c.audio.on) {
@@ -698,22 +695,24 @@ function finaleCard() {
         ${doneW || doneA ? `<div class="status soft">Gesetzt: Einsatz <b>${doneW ? myWager : 0}</b>${doneA && myGuess ? ', Antwort <b>' + esc(myGuess) + '</b>' : ''}. Bis die Zeit abläuft, kannst du noch ändern.</div>` : ''}</div>`;
     }
   } else {
-    const r = c.review;
-    const curPid = r.order[r.i];
-    status = c.state === 'reveal'
-      ? (c.result === 'none' ? 'Niemand hat gespielt – keine Punkteänderung.' : 'Alle Antworten sind aufgedeckt.')
-      : r.stage === 0 ? `${esc(pname(curPid))} ist dran …` : r.stage === 1 ? `Antwort von ${esc(pname(curPid))} – richtig oder falsch?` : `${esc(pname(curPid))}: ${r.shown[curPid].correct ? 'richtig!' : 'leider falsch.'}`;
-    list = `<ul class="finlist">${r.order.map((pid, i) => {
-      const sh = r.shown[pid], isCur = c.state === 'review' && i === r.i;
+    const r = c.review, k = r.order.length;
+    const allMarked = r.order.every(pid => typeof r.marks[pid] === 'boolean');
+    if (c.state === 'review') status = `Antworten werden aufgedeckt (${r.revealed}/${k}).`;
+    else if (c.state === 'judge') status = host ? 'Entscheide pro Spieler: richtig oder falsch. Dann auswerten.' : 'Der Spielleiter bewertet die Antworten …';
+    else status = c.result === 'none' ? 'Niemand hat gespielt – keine Punkteänderung.' : 'Ausgewertet – die Einsätze sind verrechnet.';
+    list = `<ul class="finlist ${c.state === 'judge' && host ? 'judging' : ''}">${r.order.map((pid, i) => {
+      const sh = r.shown[pid], m = r.marks[pid];
       const judged = sh && sh.correct !== undefined;
-      return `<li class="${isCur ? 'cur' : ''} ${judged ? (sh.correct ? 'ok' : 'bad') : ''}">
-        <span class="nm">${plabel(pid)}</span>
-        <span class="an">${sh ? (sh.answer ? esc(sh.answer) : '<span class="hid">keine Antwort</span>') : (host ? `<span class="hid">${esc(c.answers[pid] || 'keine Antwort')}</span>` : '<span class="hid">verdeckt</span>')}</span>
-        <span class="wg">${judged ? (sh.correct ? '+' : '−') + sh.wager : (host ? `<span class="hid">Einsatz ${c.wagers[pid] || 0}</span>` : '')}</span>
-        <span class="rs">${judged ? (sh.correct ? '✓' : '✗') : ''}</span></li>`;
+      const cls = judged ? (sh.correct ? 'ok' : 'bad') : m === true ? 'ok' : m === false ? 'bad' : '';
+      const answer = sh ? (sh.answer ? esc(sh.answer) : '<span class="hid">keine Antwort</span>') : (host ? `<span class="hid">${esc(c.answers[pid] || 'keine Antwort')}</span>` : '<span class="hid">verdeckt</span>');
+      const right = judged ? `<span class="wg">${(sh.correct ? '+' : '−') + sh.wager}</span><span class="rs">${sh.correct ? '✓' : '✗'}</span>`
+        : c.state === 'judge' && host ? `<span class="wg"><span class="hid">Einsatz ${c.wagers[pid] || 0}</span></span><span class="rs marks"><button class="ok sm ${m === true ? 'on' : ''}" data-act="mark" data-id="${pid}" data-v="1" title="richtig">✓</button><button class="bad sm ${m === false ? 'on' : ''}" data-act="mark" data-id="${pid}" data-v="0" title="falsch">✗</button></span>`
+        : `<span class="wg">${host ? `<span class="hid">Einsatz ${c.wagers[pid] || 0}</span>` : ''}</span><span class="rs">${m === true ? '✓' : m === false ? '✗' : ''}</span>`;
+      return `<li class="${cls} ${c.state === 'review' && i === r.revealed ? 'cur' : ''}"><span class="nm">${plabel(pid)}</span><span class="an">${answer}</span>${right}</li>`;
     }).join('')}</ul>`;
     const out = S.players.filter(p => !c.participants.includes(p.id)).map(p => p.id);
     if (out.length) list += `<div class="status soft">Ausgesetzt: ${nameList(out)}</div>`;
+    if (c.state === 'judge' && host && !allMarked) list += '<div class="status soft">Noch nicht alle Zeilen bewertet.</div>';
   }
 
   if ((c.state === 'decide' || c.state === 'play') && c.left != null) cd = `<div class="cdwrap"><span class="cd">${fmtTime(Math.ceil(c.left / 1000))}</span></div>`;
@@ -724,12 +723,9 @@ function finaleCard() {
     if (c.state === 'intro') btns = `<button data-act="open">Frage zeigen</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}`;
     else if (c.state === 'decide') btns = `<button data-act="skip">Weiter (Entscheidung beenden)</button>${snd}`;
     else if (c.state === 'play') btns = `<button data-act="skip">Zeit beenden</button>${snd}`;
-    else if (c.state === 'review') {
-      const r = c.review;
-      if (r.stage === 0) btns = `<button data-act="revealNext">Antwort von ${esc(pname(r.order[r.i]))} aufdecken</button>`;
-      else if (r.stage === 1) btns = `<button class="ok" data-act="judge" data-v="1">Richtig, +${c.wagers[r.order[r.i]] || 0}</button><button class="bad" data-act="judge" data-v="0">Falsch, −${c.wagers[r.order[r.i]] || 0}</button>`;
-      else btns = `<button data-act="revealNext">${r.i + 1 >= r.order.length ? 'Zusammenfassung' : 'Nächster Spieler'}</button>`;
-    } else btns = `<button data-act="close">${c.idx + 1 >= c.total ? 'Zur Siegerehrung' : 'Nächste Finalfrage'}</button>`;
+    else if (c.state === 'review') { const r = c.review; btns = `<button data-act="revealNext">Antwort von ${esc(pname(r.order[r.revealed]))} aufdecken (${r.revealed + 1}/${r.order.length})</button>`; }
+    else if (c.state === 'judge') { const r = c.review; const ok = r.order.every(pid => typeof r.marks[pid] === 'boolean'); btns = `<button data-act="resolve" ${ok ? '' : 'disabled'}>Auswerten – Einsätze aufdecken</button>`; }
+    else btns = `<button data-act="close">${c.idx + 1 >= c.total ? 'Zur Siegerehrung' : 'Nächste Finalfrage'}</button>`;
   }
 
   const blocked = c.sound && c.audio.on && audioBlocked ? '<div class="btns"><button data-act="tapsound">Sound starten</button></div>' : '';
@@ -854,6 +850,7 @@ document.addEventListener('click', e => {
     case 'wager': sendWager(); break;
     case 'play': sendWager(); sendGuess(); break;
     case 'decide': myDecision = d.p === '1'; socket.emit('player:decide', { play: myDecision }); render(); break;
+    case 'mark': socket.emit('host:mark', { id: d.id, correct: d.v === '1' }); break;
     case 'menu': menuFor = menuFor === d.id ? null : d.id; render(); break;
     case 'adj': socket.emit('host:adjust', { id: d.id, delta: +d.d }); break;
     case 'adjcustom': { const v = document.getElementById('adjv'); const n = Number(v && v.value); if (Number.isFinite(n) && n !== 0) socket.emit('host:adjust', { id: d.id, delta: n }); break; }

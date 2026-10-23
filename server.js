@@ -448,36 +448,26 @@ function finToReview(room, cur) {
   clearTimers(cur);
   cur.state = 'review'; cur.deadline = 0; cur.audio.on = false;
   const order = room.players.filter(p => cur.participants.includes(p.id)).sort((a, b) => a.score - b.score).map(p => p.id);   // vom Letzten zum Ersten
-  cur.review = { order, i: 0, stage: 0, judged: {} };
-  if (!order.length) { cur.state = 'reveal'; cur.result = 'done'; return; }
-  finAutoJudge(room, cur);
+  cur.review = { order, revealed: 0, marks: {}, judged: {} };
+  if (!order.length) { cur.state = 'reveal'; cur.result = 'done'; }
 }
-// Mitspieler ohne Antwort werden automatisch als falsch gewertet (Einsatz weg)
-function finAutoJudge(room, cur) {
+// Alle Antworten offen -> Spielleiter bewertet jede Zeile selbst. Einzige Vorgabe: keine Antwort = falsch (umschaltbar)
+function finToJudge(room, cur) {
+  cur.state = 'judge';
+  cur.review.order.forEach(pid => { if (!(cur.answers[pid] || '').trim()) cur.review.marks[pid] = false; });
+}
+// Auswerten: Einsaetze aufdecken und auf einmal verrechnen
+function finResolve(room, cur) {
   const r = cur.review;
-  const pid = r.order[r.i];
-  if (pid === undefined) return;
-  if (!(cur.answers[pid] || '').trim()) finJudge(room, cur, false);
-}
-function finJudge(room, cur, correct) {
-  const r = cur.review, pid = r.order[r.i];
-  const p = player(room, pid);
-  const w = cur.wagers[pid] || 0;
-  if (p) {
-    award(room, cur, pid, correct ? w : -w, correct ? 'correct' : 'wrong');
-    if (correct) p.stats.correct++; else p.stats.wrong++;
-  }
-  r.judged[pid] = { correct, wager: w, answer: cur.answers[pid] || '' };
-  r.stage = 2;
-}
-function finRevealNext(room, cur) {
-  const r = cur.review;
-  if (r.stage === 0) { r.stage = 1; return; }
-  if (r.stage === 2) {
-    if (r.i + 1 >= r.order.length) { cur.state = 'reveal'; cur.result = 'done'; return; }
-    r.i++; r.stage = 0;
-    finAutoJudge(room, cur);
-  }
+  r.order.forEach(pid => {
+    const p = player(room, pid), correct = r.marks[pid] === true, w = cur.wagers[pid] || 0;
+    if (p) {
+      award(room, cur, pid, correct ? w : -w, correct ? 'correct' : 'wrong');
+      if (correct) p.stats.correct++; else p.stats.wrong++;
+    }
+    r.judged[pid] = { correct, wager: w, answer: cur.answers[pid] || '' };
+  });
+  cur.state = 'reveal'; cur.result = 'done';
 }
 
 // ---------- Awards ----------
@@ -516,7 +506,7 @@ function stateFor(room, forHost) {
       shown = {};
       r.order.forEach((pid, i) => {
         if (r.judged[pid]) shown[pid] = r.judged[pid];
-        else if (i === r.i && r.stage >= 1) shown[pid] = { answer: cur.answers[pid] || '' };
+        else if (i < r.revealed) shown[pid] = { answer: cur.answers[pid] || '' };
       });
     }
     current = {
@@ -530,7 +520,7 @@ function stateFor(room, forHost) {
       decided: Object.keys(cur.decision).length,
       decision: forHost || cur.state !== 'decide' ? cur.decision : {},
       participants: cur.state === 'decide' ? [] : cur.participants,
-      review: r ? { order: r.order, i: r.i, stage: r.stage, shown } : null,
+      review: r ? { order: r.order, revealed: r.revealed, marks: r.marks, shown } : null,
       awards: cur.awards, result: cur.result
     };
     if (forHost || cur.state === 'reveal') { current.answer = q.antwort; current.ansBild = q.antwortBild; }
@@ -855,12 +845,7 @@ io.on('connection', sock => {
     const room = hostRoom();
     const cur = room && room.current;
     if (!cur) return;
-    if (cur.typ === 'finale') {
-      if (cur.state !== 'review' || cur.review.stage !== 1) return;
-      room.undo = snapshot(room, 'Finale: Wertung für ' + (player(room, cur.review.order[cur.review.i]) || {}).name);
-      finJudge(room, cur, !!correct);
-      return emitState(room);
-    }
+    if (cur.typ === 'finale') return;   // im Finale bewertet der Host pro Zeile ueber host:mark
     if ((cur.typ !== 'buzzer' && cur.typ !== 'reveal') || cur.state !== 'buzzed') return;
     const p = player(room, cur.buzzer);
     const value = V(room)[cur.row];
@@ -918,7 +903,9 @@ io.on('connection', sock => {
     if (!cur) return;
     if (cur.typ === 'finale') {
       if (cur.state !== 'review') return;
-      finRevealNext(room, cur);
+      const r = cur.review;
+      if (r.revealed < r.order.length) r.revealed++;
+      if (r.revealed >= r.order.length) finToJudge(room, cur);
       return emitState(room);
     }
     if (cur.state !== 'review') return;
@@ -929,10 +916,28 @@ io.on('connection', sock => {
   sock.on('host:resolve', () => {
     const room = hostRoom();
     const cur = room && room.current;
-    if (!cur || cur.typ !== 'schaetzen' || cur.state !== 'review') return;
+    if (!cur) return;
+    if (cur.typ === 'finale') {
+      if (cur.state !== 'judge') return;
+      const r = cur.review;
+      if (!r.order.every(pid => typeof r.marks[pid] === 'boolean')) return;   // erst wenn alles bewertet ist
+      room.undo = snapshot(room, 'Finale: Auswertung von Frage ' + (cur.idx + 1));
+      finResolve(room, cur);
+      return emitState(room);
+    }
+    if (cur.typ !== 'schaetzen' || cur.state !== 'review') return;
     room.undo = room.resolveSnap = snapshot(room, 'Auflösung der Schätzfrage');
     cur.revealed = cur.order.length;
     resolveGuess(room, cur);
+    emitState(room);
+  });
+
+  // Finale: Host markiert eine Zeile als richtig/falsch (vor der Auswertung beliebig aenderbar)
+  sock.on('host:mark', ({ id, correct } = {}) => {
+    const room = hostRoom();
+    const cur = room && room.current;
+    if (!cur || cur.typ !== 'finale' || cur.state !== 'judge' || !cur.review.order.includes(id)) return;
+    cur.review.marks[id] = !!correct;
     emitState(room);
   });
 
@@ -1032,13 +1037,11 @@ io.on('connection', sock => {
       delete cur.wagers[id]; delete cur.answers[id]; delete cur.decision[id];
       cur.participants = cur.participants.filter(x => x !== id);
       if (cur.review) {
-        const r = cur.review, wasCurrent = r.order[r.i] === id, idx = r.order.indexOf(id);
-        r.order = r.order.filter(x => x !== id); delete r.judged[id];
-        if (idx >= 0 && idx < r.i) r.i--;
-        if (wasCurrent) {
-          r.stage = 0;
-          if (r.i >= r.order.length) { cur.state = 'reveal'; cur.result = 'done'; } else finAutoJudge(room, cur);
-        }
+        const r = cur.review, idx = r.order.indexOf(id);
+        r.order = r.order.filter(x => x !== id); delete r.judged[id]; delete r.marks[id];
+        if (idx >= 0 && idx < r.revealed) r.revealed--;
+        if (cur.state === 'review' && r.revealed >= r.order.length && r.order.length) finToJudge(room, cur);
+        if (!r.order.length && cur.state !== 'reveal') { cur.state = 'reveal'; cur.result = 'done'; }
       }
     } else if (cur) {
       cur.locked.delete(id);
