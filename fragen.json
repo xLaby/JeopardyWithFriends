@@ -28,8 +28,8 @@
           "antwort": "Kanada und die USA"
         },
         {
-          "frage": "Welcher Stadtstaat ist vollständig von Italien umgeben und liegt mitten in Rom?",
-          "antwort": "Vatikanstadt"
+          "frage": "Nenne mir eines der beiden Länder, die vollständig von Italien umgeben sind.",
+          "antwort": "Vatikanstadt oder San Marino"
         },
         {
           "frage": "In welchem Land liegt der größte Teil der Atacama-Wüste?",
@@ -47,8 +47,8 @@
           "antwortBild": "https://blog.assets.studyflix.de/wp-content/uploads/2022/11/Folie2-9-1024x576.png"
         },
         {
-          "frage": "Welches südamerikanische Land wird vom Äquator durchquert und ist nach ihm benannt?",
-          "antwort": "Ecuador",
+          "frage": "Nenne mir 5 Länder, die sowohl auf der Nord- als auch auf der Südhalbkugel liegen und vom Äquator durchquert werden.",
+          "antwort": "Fünf von: Ecuador, Kolumbien, Brasilien, São Tomé und Príncipe, Gabun, Republik Kongo, Demokratische Republik Kongo, Uganda, Kenia, Somalia, Indonesien – (Malediven und Kiribati nur über ihr Seegebiet)",
           "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e8/Flag_of_Ecuador.svg/960px-Flag_of_Ecuador.svg.png?utm_source=de.wikipedia.org&utm_campaign=index&utm_content=thumbnail"
         }
       ]
@@ -379,7 +379,7 @@
           "antwortBild": "https://m.media-amazon.com/images/M/MV5BNTliMjZmOTAtODUwMS00MTQ1LWE3YTktZGY5Mzk2YTBkNmYxXkEyXkFqcGc@._V1_QL75_UY281_CR31,0,500,281_.jpg"
         },
         {
-          "frage": "Fangfrage: Wie heißt der Vorname von Mr. Bean?",
+          "frage": "Wie heißt der Vorname von Mr. Bean?",
           "antwort": "\"Mr.\"",
           "antwortBild": "https://images-cdn.9gag.com/photo/aNzvLe6_700b.jpg"
         },
@@ -710,7 +710,7 @@
         {
           "frage": "Welches Land hat als einziges eine Schusswaffe – eine AK-47 – auf seiner Nationalflagge?",
           "antwort": "Mosambik",
-          "bild": "",
+          "bild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d0/Flag_of_Mozambique.svg/250px-Flag_of_Mozambique.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
           "antwortBild": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d0/Flag_of_Mozambique.svg/250px-Flag_of_Mozambique.svg.png?utm_source=de.wikipedia.org&utm_campaign=parser&utm_content=thumbnail"
         }
       ]

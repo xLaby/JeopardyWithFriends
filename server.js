@@ -65,6 +65,39 @@ app.post('/upload', express.json({ limit: '56mb' }), (req, res) => {
     res.json({ ok: true, medien: blobs.size, bytes: total });
   } catch (e) { res.json({ ok: false, error: e.message }); }
 });
+// Spielstand sichern: alles, was der Raum weiss, als JSON zum Herunterladen (inkl. hochgeladener Medien)
+app.post('/export', express.json({ limit: '1mb' }), (req, res) => {
+  const { code, token: tok } = req.body || {};
+  const room = rooms.get(str(code).toUpperCase());
+  if (!room || room.hostToken !== tok) return res.status(403).json({ ok: false, error: 'Kein Zugriff auf diesen Raum.' });
+  res.json({ ok: true, save: exportRoom(room) });
+});
+// Spielstand laden: in der Lobby eines neuen Raums. Der alte Raumcode wird uebernommen, wenn er frei ist,
+// damit sich die Spieler ueber ihre gespeicherte Sitzung automatisch wieder verbinden koennen.
+app.post('/restore', express.json({ limit: '56mb' }), (req, res) => {
+  const { code, token: tok, save } = req.body || {};
+  const room = rooms.get(str(code).toUpperCase());
+  if (!room || room.hostToken !== tok) return res.status(403).json({ ok: false, error: 'Kein Zugriff auf diesen Raum.' });
+  if (room.phase !== 'lobby') return res.json({ ok: false, error: 'Nur in der Lobby moeglich.' });
+  try {
+    if (!save || save.version !== 1 || !save.data) throw new Error('Das ist keine Spielstand-Datei.');
+    const restored = importRoom(save);
+    const oldCode = str(save.code).toUpperCase();
+    const useOld = /^[A-Z0-9]{4}$/.test(oldCode) && (!rooms.has(oldCode) || oldCode === room.code);
+    restored.code = useOld ? oldCode : room.code;
+    restored.hostToken = useOld ? (str(save.hostToken, 40) || room.hostToken) : room.hostToken;
+    restored.hostSocket = null;
+    if (restored.code !== oldCode) {
+      const fix = v => typeof v === 'string' ? v.replace('/blob/' + oldCode + '/', '/blob/' + restored.code + '/') : v;
+      const walk = f => ['bild', 'sound', 'antwortBild'].forEach(k => { if (f[k]) f[k] = fix(f[k]); });
+      restored.data.kategorien.forEach(c => c.fragen.forEach(walk));
+      if (restored.data.finale) restored.data.finale.fragen.forEach(walk);
+    }
+    rooms.delete(room.code);
+    rooms.set(restored.code, restored);
+    res.json({ ok: true, code: restored.code, token: restored.hostToken, players: restored.players.length, sameCode: useOld });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
 app.get('/blob/:code/:name', (req, res) => {
   const room = rooms.get(req.params.code);
   const b = room && room.blobs && room.blobs.get(req.params.name);
@@ -453,6 +486,50 @@ function finResolve(room, cur) {
     r.judged[pid] = { correct, wager: w, answer: cur.answers[pid] || '' };
   });
   cur.state = 'reveal'; cur.result = 'done';
+}
+
+// ---------- Spielstand sichern / laden ----------
+const serCur = cur => cur ? { ...cur, t: undefined, window: null, locked: cur.locked ? [...cur.locked] : undefined } : null;
+function exportRoom(room) {
+  const blobs = {};
+  room.blobs.forEach((b, name) => { blobs[name] = { mime: b.mime, b64: b.buf.toString('base64') }; });
+  return {
+    version: 1, savedAt: new Date().toISOString(), code: room.code, hostToken: room.hostToken,
+    phase: room.phase, data: { ...room.data, werte: room.data.values }, settings: room.settings, picker: room.picker, done: room.done, fin: room.fin,
+    used: [...room.used], fixed: [...room.fixed], jokers: [...room.jokers],
+    players: room.players.map(p => ({ id: p.id, token: p.token, name: p.name, score: p.score, streak: p.streak, jokers: p.jokers, pendingPick: p.pendingPick, stats: p.stats, color: p.color, avatar: p.avatar })),
+    current: serCur(room.current), blobs
+  };
+}
+function importRoom(save) {
+  const data = normalize(save.data);
+  const blobs = new Map();
+  Object.entries(save.blobs || {}).forEach(([name, b]) => {
+    if (b && typeof b.b64 === 'string' && /^(image|audio)\//.test(b.mime || '')) blobs.set(safeName(name), { buf: Buffer.from(b.b64, 'base64'), mime: b.mime });
+  });
+  const players = (Array.isArray(save.players) ? save.players : []).slice(0, 30).map(p => ({
+    id: str(p.id, 16) || crypto.randomBytes(4).toString('hex'), token: str(p.token, 40) || token(), name: str(p.name, 20) || 'Spieler',
+    score: Number.isFinite(Number(p.score)) ? Math.round(Number(p.score)) : 0, streak: Number(p.streak) || 0,
+    jokers: (Array.isArray(p.jokers) ? p.jokers : []).filter(j => JOKERS.includes(j)).slice(0, MAX_JOKERS),
+    pendingPick: Math.max(0, Number(p.pendingPick) || 0), stats: { ...newStats(), ...(p.stats || {}) },
+    color: Number.isInteger(p.color) ? p.color : 0, avatar: Number.isInteger(p.avatar) ? p.avatar : 0,
+    socketId: null, connected: false
+  }));
+  let cur = save.current && typeof save.current === 'object' ? { ...save.current } : null;
+  if (cur) {
+    cur.t = {}; cur.window = null; cur.deadline = 0; cur.timeUp = false;
+    if (cur.locked) cur.locked = new Set(cur.locked);
+    if (cur.audio) cur.audio = { ...cur.audio, on: false }; else cur.audio = { n: 0, on: false };
+  }
+  const phase = ['lobby', 'game', 'finale', 'end'].includes(save.phase) ? save.phase : 'lobby';
+  const s = save.settings || {};
+  return {
+    code: null, hostToken: null, hostSocket: null, phase, data, players,
+    used: new Set(save.used || []), fixed: new Set(save.fixed || []), jokers: new Set(save.jokers || []),
+    current: cur, picker: save.picker || null, fin: save.fin || null, blobs,
+    settings: { joker: Number(s.joker) >= 0 ? Number(s.joker) : 5, answerTime: Number(s.answerTime) || 10, guessTime: Number(s.guessTime) || 90, comeback: Number.isFinite(Number(s.comeback)) ? Number(s.comeback) : 20 },
+    touched: Date.now(), done: Number(save.done) || 0, interlude: null, timer: null, notices: [], undo: null
+  };
 }
 
 // ---------- Awards ----------
@@ -1061,9 +1138,14 @@ io.on('connection', sock => {
     if (!p) {
       const name = str(msg.name, 20);
       if (!name) return cb({ ok: false, error: 'Bitte einen Namen eingeben.' });
-      if (room.phase !== 'lobby') return cb({ ok: false, error: 'Das Spiel laeuft bereits.' });
-      if (room.players.some(x => x.name.toLowerCase() === name.toLowerCase()))
-        return cb({ ok: false, error: 'Dieser Name ist schon vergeben.' });
+      // Platz zurueckholen: gleicher Name, Spieler gerade nicht verbunden (z. B. nach Neustart oder geladenem Spielstand)
+      const seat = room.players.find(x => x.name.toLowerCase() === name.toLowerCase());
+      if (seat && !seat.connected) { p = seat; p.token = token(); }
+      else if (room.phase !== 'lobby') return cb({ ok: false, error: 'Das Spiel laeuft bereits.' });
+      else if (seat) return cb({ ok: false, error: 'Dieser Name ist schon vergeben.' });
+    }
+    if (!p) {
+      const name = str(msg.name, 20);
       if (room.players.length >= 30) return cb({ ok: false, error: 'Der Raum ist voll.' });
       p = { id: crypto.randomBytes(4).toString('hex'), token: token(), name, score: 0, streak: 0,
             jokers: [], pendingPick: 0, stats: newStats(), socketId: null, connected: false, ...pickLook(room, msg.color, msg.avatar) };

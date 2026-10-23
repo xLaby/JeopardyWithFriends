@@ -20,12 +20,14 @@ const WHY = { correct: 'richtig', wrong: 'falsch', risk: 'Risiko verloren', stre
 // Muss zur Liste im Server passen (wird dort geprueft)
 const COLORS = ['#e0443a', '#f5b92e', '#41c27a', '#3b9ddd', '#a86be0', '#ff9ad5', '#ff8a3c', '#2ec4b6', '#c9b8a0', '#8ff0b8', '#ffe08a', '#6b8cff'];
 const AVATARS = ['🦊', '🐼', '🦁', '🐸', '🐙', '🦄', '🐧', '🐯', '🐨', '🦉', '🐵', '🐺', '🦖', '🐢', '🦋', '🐝', '🍕', '🎸', '🚀', '🎲', '🧙', '🤖', '👽', '🍩'];
+let lastSession = null;
 let look = JSON.parse(localStorage.getItem('quiz-look') || 'null') || { color: Math.floor(Math.random() * COLORS.length), avatar: Math.floor(Math.random() * AVATARS.length) };
 let lookOpen = false;
 const seenNotices = new Set();
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const save = () => me ? localStorage.setItem(LS, JSON.stringify(me)) : localStorage.removeItem(LS);
+const save2 = save;
 const pname = id => { const p = S && S.players.find(x => x.id === id); return p ? p.name : '?'; };
 const pOf = id => S && S.players.find(x => x.id === id);
 // Name mit Avatar (fuer Listen und Chips)
@@ -196,7 +198,7 @@ setInterval(() => { if (me) fetch('/ping').catch(() => {}); }, 5 * 60 * 1000);
 /* ---------- Verbindung ---------- */
 function tryRejoin() {
   if (!me) return;
-  const done = r => { if (!r.ok) { me = null; S = null; save(); render(); } };
+  const done = r => { if (!r.ok) { lastSession = me; startError = 'Deine Sitzung wurde nicht gefunden (Server neu gestartet?). Mit Code und Namen erneut beitreten – dein Platz und deine Punkte bleiben erhalten.'; me = null; S = null; save(); render(); } };
   if (me.role === 'host') socket.emit('host:rejoin', { code: me.code, token: me.token }, done);
   else socket.emit('player:join', { code: me.code, token: me.token }, done);
 }
@@ -328,14 +330,15 @@ function render() {
 }
 
 function viewStart() {
-  const code = new URLSearchParams(location.search).get('code') || '';
+  const code = new URLSearchParams(location.search).get('code') || (lastSession && lastSession.code) || '';
+  const name = lastSession && lastSession.name ? lastSession.name : '';
   $app.innerHTML = `
   <div class="wrap stack">
     <div class="logo">Quiz Show</div>
     <div class="panel stack">
       <h2>Mitspielen</h2>
       <input type="text" id="jcode" placeholder="Raumcode" maxlength="4" autocapitalize="characters" autocomplete="off" value="${esc(code.toUpperCase())}">
-      <input type="text" id="jname" placeholder="Dein Name" maxlength="20" autocomplete="nickname">
+      <input type="text" id="jname" placeholder="Dein Name" maxlength="20" autocomplete="nickname" value="${esc(name)}">
       ${lookPicker()}
       <div class="err" id="err">${esc(startError)}</div>
       <button data-act="join">Beitreten</button>
@@ -403,6 +406,12 @@ function viewHostLobby() {
           <div class="err" id="err"></div>
         </div>
         <div class="panel stack">
+          <h2>Spielstand laden</h2>
+          <div class="muted">Eine im Spiel gesicherte Datei („Spielstand sichern") hier einspielen, z. B. nach einem Server-Neustart. Punkte, Joker, Board und Finale kommen zurück. Wenn der alte Raumcode noch frei ist, bleibt er erhalten und die Spieler müssen nur die Seite neu laden – sonst treten sie mit ihrem Namen erneut bei.</div>
+          <input type="file" id="savefile" accept=".json,application/json">
+          <div class="err" id="saveerr"></div>
+        </div>
+        <div class="panel stack">
           <h2>Einstellungen</h2>
           <div class="settings">
             <label>Joker-Felder gesamt<input type="number" id="setj" min="0" max="150" value="${S.settings.joker}"></label>
@@ -431,6 +440,25 @@ function viewHostLobby() {
       fetch('/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: me.code, token: me.token, paket: data }) })
         .then(r => r.json()).then(r => err(r.ok ? '' : r.error))
         .catch(() => err('Upload fehlgeschlagen (Datei zu groß oder keine Verbindung).'));
+    });
+  };
+  document.getElementById('savefile').onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const err = m => { const el = document.getElementById('saveerr'); if (el) el.textContent = m; };
+    f.text().then(t => {
+      let save; try { save = JSON.parse(t); } catch { return err('Das ist keine gültige JSON-Datei.'); }
+      if (!save || save.version !== 1 || !save.data) return err('Das ist keine Spielstand-Datei.');
+      if (!confirm(`Spielstand vom ${new Date(save.savedAt).toLocaleString('de-DE')} laden?\n${(save.players || []).length} Spieler, Phase: ${save.phase}.\n\nDer aktuelle Raum wird dadurch ersetzt.`)) return;
+      err('Lade …');
+      fetch('/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: me.code, token: me.token, save }) })
+        .then(r => r.json()).then(r => {
+          if (!r.ok) return err(r.error);
+          me = { role: 'host', code: r.code, token: r.token }; save2();
+          tryRejoin();
+          setTimeout(() => alert(r.sameCode
+            ? `Spielstand geladen, Raumcode ${r.code} wie vorher. Die Spieler müssen nur ihre Seite neu laden.`
+            : `Spielstand geladen. Neuer Raumcode: ${r.code}. Die Spieler treten mit ihrem bisherigen Namen erneut bei – Punkte und Joker bleiben erhalten.`), 300);
+        }).catch(() => err('Laden fehlgeschlagen.'));
     });
   };
   document.getElementById('setj').onchange = e => socket.emit('host:setSettings', { joker: e.target.value });
@@ -512,6 +540,7 @@ function hud() {
       ${host && S.phase === 'game' && !S.current ? `<button class="ghost ${jokerMode ? 'on' : ''}" data-act="jokermode">${jokerMode ? 'Joker-Modus beenden' : 'Joker-Felder bearbeiten'}</button>` : ''}
       ${host && S.phase === 'game' && !S.current && S.finale ? '<button class="ghost" data-act="finale">Finale starten</button>' : ''}
       ${host && S.canUndo ? `<button class="ghost undo" data-act="undo" title="${esc(S.canUndo)}">↶ Rückgängig</button>` : ''}
+      ${host ? '<button class="ghost" data-act="export" title="Spielstand als Datei herunterladen">Spielstand sichern</button>' : ''}
       <button class="ghost" data-act="mute">${muted ? 'Ton aus' : 'Ton an'}</button>
       ${host ? '<button class="ghost" data-act="end">Beenden</button>' : ''}</div></div>
   ${S.hostOnline ? '' : '<div class="banner">Der Spielleiter ist gerade nicht verbunden.</div>'}`;
@@ -925,6 +954,20 @@ document.addEventListener('click', e => {
     case 'close': socket.emit('host:close'); break;
     case 'finale': if (confirm('Finale jetzt starten? Das Board wird dann nicht weitergespielt.')) socket.emit('host:finale'); break;
     case 'finaleNext': socket.emit('host:finaleNext'); break;
+    case 'export':
+      el.textContent = 'Sichere …';
+      fetch('/export', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: me.code, token: me.token }) })
+        .then(r => r.json()).then(r => {
+          if (!r.ok) throw new Error(r.error);
+          const blob = new Blob([JSON.stringify(r.save)], { type: 'application/json' });
+          const a = document.createElement('a');
+          const d = new Date(), pad = n => String(n).padStart(2, '0');
+          a.href = URL.createObjectURL(blob); a.download = `quiz-stand-${me.code}-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+          el.textContent = 'Gesichert ✓'; setTimeout(render, 2000);
+        }).catch(() => { el.textContent = 'Fehler beim Sichern'; setTimeout(render, 2500); });
+      break;
     case 'undo': if (confirm('Rückgängig: ' + S.canUndo + '?')) socket.emit('host:undo'); break;
     case 'dismiss': socket.emit('host:dismiss'); break;
     case 'color': look.color = +d.i; localStorage.setItem('quiz-look', JSON.stringify(look)); if (me && me.role === 'player') socket.emit('player:look', look); render(); break;

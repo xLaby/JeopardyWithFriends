@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3.5
+# Quiz Show (Jeopardy-Stil) – Version 3.6
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -30,6 +30,12 @@ Ein optionaler Block `"finale"` mit beliebig vielen Fragen. Es startet automatis
 5. **Bewerten:** Sind alle Antworten offen, markiert der Spielleiter jede Zeile mit ✓ oder ✗ – ohne Vorgaben vom Server, mehrere ✓ sind möglich. Die Spieler sehen die Markierungen live, können aber nichts tun. Einzige Voreinstellung: Wer gespielt, aber nichts geantwortet hat, steht auf ✗ (umschaltbar).
 6. **Auswerten:** Erst wenn alle Zeilen bewertet sind, deckt ein Klick die Einsätze auf und verrechnet sie auf einmal. Rückgängig nimmt die ganze Auswertung zurück.
 7. **Nächste Finalfrage** oder Siegerehrung.
+
+## Spielstand sichern und laden
+- **Sichern:** Im Spiel (und im Finale) hat der Spielleiter den Knopf „Spielstand sichern" – lädt eine JSON-Datei mit allem herunter: Punkte, Joker, Serie, Board, aktuelle Frage, Einstellungen, Finale-Stand, hochgeladene Medien.
+- **Laden:** In der Lobby eines neuen Raums unter „Spielstand laden" die Datei auswählen. Der Raum übernimmt den gesicherten Stand. Ist der alte Raumcode noch frei (typisch nach einem Server-Neustart), bleibt er erhalten und die Spieler müssen nur ihre Seite neu laden. Ist er belegt, bekommt der Raum den neuen Code und die Spieler treten mit ihrem bisherigen Namen erneut bei – Punkte und Joker bleiben.
+- **Platz zurückholen:** Wer die Verbindung verliert oder nach einem Neustart auf der Startseite landet, kann im laufenden Spiel mit seinem bisherigen Namen wieder beitreten, solange sein Platz nicht verbunden ist. Code und Name sind dann schon vorausgefüllt.
+- Eine laufende Antwort- oder Schätzzeit wird nach dem Laden nicht fortgesetzt; der Spielleiter beendet sie per Knopf.
 
 ## Spielgefühl
 - **Farbe und Avatar:** Beim Beitreten wählt jeder eine Farbe und ein Emoji (in der Lobby änderbar). Beides erscheint auf Chips, Buzzer, Listen und Siegerehrung.
@@ -108,5 +114,5 @@ Node.js ab Version 18, dann im Projektordner `npm install` und `npm start`, dana
 
 ## Online stellen (Render)
 Projekt in GitHub aktualisieren, Render deployt automatisch neu. Build Command `npm install`, Start Command `npm start`.
-Der Gratis-Server schläft nach etwa 15 Minuten ohne Aufrufe ein; verbundene Spieler halten ihn über einen kleinen Ping alle 5 Minuten wach. Der Spielstand liegt nur im Arbeitsspeicher – vor dem Spielabend einmal die Seite aufrufen.
-Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=11`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.
+Der Gratis-Server schläft nach etwa 15 Minuten ohne Aufrufe ein; verbundene Spieler halten ihn über einen kleinen Ping alle 5 Minuten wach. Der Spielstand liegt nur im Arbeitsspeicher – vor dem Spielabend einmal die Seite aufrufen und zwischendurch „Spielstand sichern“ drücken.
+Nach jedem Update die Versionsnummer in `public/index.html` und `public/editor.html` (`?v=12`) hochzählen, dann holen alle Browser garantiert die neuen Dateien.
