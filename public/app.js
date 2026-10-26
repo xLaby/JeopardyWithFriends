@@ -5,7 +5,7 @@ let me = JSON.parse(localStorage.getItem(LS) || 'null'); // {role, code, token, 
 let S = null, startError = '', coffeePick = false, draft = '', lastCardKey = '', cardFresh = false;
 let muted = localStorage.getItem('quiz-mute') === '1';
 let audioBlocked = false, lastAudioKey = '', previewing = false, mediaStop = null;
-let openAt = 0, buzzSent = false, lockUntil = 0, lockTimer = null;   // Buzzer-Fairness
+let openAt = 0, buzzSent = false, lockUntil = 0, lockTimer = null, holdUntil = 0;   // Buzzer-Fairness (holdUntil: Handicap-Verzoegerung)
 let myGuess = '', myWager = null, myDecision = null, jokerMode = false, deadline = 0, menuFor = null;
 let revealT0 = 0, pixStage = -1;                                      // Reveal-Bild
 let lastTick = 0, shakeCard = false, cardFx = '', scoreAnim = {}, floats = [];   // Effekte
@@ -184,6 +184,8 @@ setInterval(() => {
     const cur = S && S.current;
     if (cur && cur.state === 'buzzed' && left <= 3 && left > 0 && left !== lastTick) { lastTick = left; SFX.tick(); }
   }
+  const hb = document.querySelector('.buzz[data-hold="1"]');   // Handicap-Countdown auf dem Buzzer
+  if (hb) { const l = holdUntil - Date.now(); if (l > 0) hb.textContent = '🐢 ' + Math.ceil(l / 1000); else { holdUntil = 0; render(); } }
   document.querySelectorAll('.notice[data-exp]').forEach(el => { if (+el.dataset.exp < Date.now()) el.remove(); });
   const c = S && S.current;
   if (c && c.reveal && c.reveal.mode === 'bild' && c.state === 'open') {
@@ -205,7 +207,15 @@ function tryRejoin() {
 socket.on('connect', () => { document.getElementById('banner').innerHTML = ''; tryRejoin(); });
 socket.on('disconnect', () => { document.getElementById('banner').innerHTML = '<div class="banner">Verbindung verloren, verbinde neu …</div>'; });
 socket.on('kicked', () => { me = null; S = null; save(); startError = 'Du wurdest aus dem Raum entfernt.'; render(); });
-socket.on('state', s => { const prev = S; S = s; effects(prev, s); render(); });
+// Design: der Spielleiter waehlt es in der Lobby, es gilt fuer alle im Raum
+function applyTheme(st) {
+  const t = (st && st.settings && st.settings.theme) || 'classic', root = document.documentElement;
+  if (root.dataset.theme === t) return;
+  root.dataset.theme = t;
+  const m = document.querySelector('meta[name=theme-color]'), bg = getComputedStyle(root).getPropertyValue('--stage').trim();
+  if (m && bg) m.content = bg;
+}
+socket.on('state', s => { const prev = S; S = s; applyTheme(s); effects(prev, s); render(); });
 
 // Grosser Name in Spielerfarbe, wenn jemand buzzert
 function buzzFlash(pid) {
@@ -244,6 +254,7 @@ function effects(prev, s) {
   const c = s.current, p = prev && prev.current;
   scoreEffects(prev, s);
   updateLobbyMusic();
+  { const hl = c && c.hold && me && c.hold[me.pid]; holdUntil = hl ? Date.now() + hl : 0; }
   if (c && c.typ === 'finale') {
     const fresh = !p || p.typ !== 'finale' || p.idx !== c.idx;
     if (fresh) { myGuess = ''; myWager = null; myDecision = null; SFX.pick(); }
@@ -412,6 +423,11 @@ function viewHostLobby() {
           <div class="err" id="saveerr"></div>
         </div>
         <div class="panel stack">
+          <h2>Design</h2>
+          <div class="muted">Das Design gilt für alle im Raum und lässt sich nur hier in der Lobby ändern.</div>
+          <div class="themes">${(S.themes || []).map(t => `<button class="ghost themeb ${S.settings.theme === t.id ? 'on' : ''}" data-act="theme" data-id="${t.id}" aria-pressed="${S.settings.theme === t.id}"><span class="tp" style="background:linear-gradient(90deg,${t.c[0]} 0 34%,${t.c[1]} 34% 67%,${t.c[2]} 67%)"></span>${esc(t.name)}</button>`).join('')}</div>
+        </div>
+        <div class="panel stack">
           <h2>Einstellungen</h2>
           <div class="settings">
             <label>Joker-Felder gesamt<input type="number" id="setj" min="0" max="150" value="${S.settings.joker}"></label>
@@ -483,6 +499,7 @@ function jokerBadges(p) {
   const n = {}; p.jokers.forEach(t => n[t] = (n[t] || 0) + 1);
   return (p.streak >= 3 ? `<span class="badge fire" title="${p.streak} richtige in Folge">🔥 ${p.streak}</span>` : '') +
     Object.keys(n).map(t => `<span class="badge" title="${esc(JOKER[t].name)}">${JOKER[t].icon}${n[t] > 1 ? ' ' + n[t] : ''}</span>`).join('') +
+    (p.delay ? `<span class="badge slow" title="Handicap: Buzzer ${p.delay} s verzögert">🐢 ${p.delay} s</span>` : '') +
     (p.pending ? '<span class="badge new">Joker wählen</span>' : '');
 }
 function chips() {
@@ -491,7 +508,7 @@ function chips() {
     const cls = `chip ${S.picker === p.id ? 'turn' : ''} ${p.connected ? '' : 'off'} ${p.id === me.pid ? 'me' : ''} ${menuFor === p.id ? 'turn' : ''}`;
     const fl = floats.filter(f => f.pid === p.id).map(f => `<span class="float ${f.delta > 0 ? 'plus' : 'minus'}" data-fid="${f.id}">${f.delta > 0 ? '+' : '−'}${Math.abs(f.delta)}</span>`).join('');
     const inner = `${plabel(p.id)}${jokerBadges(p)}<b>${shownScore(p)}</b>${fl}`;
-    return host ? `<button class="${cls}" style="--pc:${p.color}" data-pid="${p.id}" data-act="menu" data-id="${p.id}" title="Punkte, Zug, Joker">${inner}</button>`
+    return host ? `<button class="${cls}" style="--pc:${p.color}" data-pid="${p.id}" data-act="menu" data-id="${p.id}" title="Punkte, Zug, Joker, Handicap">${inner}</button>`
                 : `<div class="${cls}" style="--pc:${p.color}" data-pid="${p.id}">${inner}</div>`;
   }).join('') + '</div>' + (host ? playerMenu() : '');
 }
@@ -510,8 +527,11 @@ function playerMenu() {
       <button class="ghost" data-act="adjcustom" data-id="${p.id}">Ändern</button></div>
     ${S.phase === 'game' ? `<div class="row"><span>Zug</span><button class="ghost" data-act="setpicker" data-id="${p.id}" ${S.picker === p.id ? 'disabled' : ''}>Ist als Nächstes dran</button></div>` : ''}
     <div class="row"><span>Joker geben</span>
-      ${Object.keys(JOKER).map(t => `<button class="ghost" data-act="give" data-id="${p.id}" data-t="${t}" ${full ? 'disabled' : ''} title="${esc(JOKER[t].name)}">${JOKER[t].icon} ${JOKER[t].name}</button>`).join('')}
-      ${full ? '<span class="muted">(hat schon 3)</span>' : ''}</div>
+      ${Object.keys(JOKER).map(t => `<button class="ghost" data-act="give" data-id="${p.id}" data-t="${t}" ${owned[t] ? 'disabled' : ''} title="${owned[t] ? 'Hat diesen Joker schon' : esc(JOKER[t].name)}">${JOKER[t].icon} ${JOKER[t].name}</button>`).join('')}
+      ${full ? '<span class="muted">(hat schon alle drei)</span>' : ''}</div>
+    <div class="row"><span>Handicap</span><span class="muted">🐢 Buzzer-Verzögerung</span>
+      ${[1, 2, 3, 5].map(sec => `<button class="ghost ${p.delay === sec ? 'on' : ''}" data-act="delay" data-id="${p.id}" data-s="${sec}" aria-pressed="${p.delay === sec}">${sec} s</button>`).join('')}
+      ${p.delay ? `<button class="ghost" data-act="delay" data-id="${p.id}" data-s="0">Aus</button>` : ''}</div>
     ${p.jokers.length ? `<div class="row"><span>Joker nehmen</span>
       ${Object.keys(owned).map(t => `<button class="ghost" data-act="take" data-id="${p.id}" data-t="${t}">${JOKER[t].icon} ${JOKER[t].name} (${owned[t]})</button>`).join('')}</div>` : ''}
     <div class="row"><span></span><button class="bad sm" data-act="kick" data-id="${p.id}">Spieler entfernen</button><button class="ghost" data-act="menu" data-id="${p.id}">Schließen</button></div>
@@ -651,15 +671,17 @@ function card() {
   // Spieler: Buzzer (auch beim Vorlesen sichtbar, damit zu fruehes Druecken erkannt wird)
   if (!host && mine && !guess && c.state !== 'reveal') {
     const locked = c.locked.includes(me.pid), early = Date.now() < lockUntil;
-    const can = c.state === 'open' && !c.pending && !locked && !buzzSent && !early;
+    const held = c.state === 'open' && holdUntil > Date.now();   // Handicap: Buzzer fuer mich noch nicht frei
+    const can = c.state === 'open' && !c.pending && !locked && !buzzSent && !early && !held;
     let label = 'BUZZ', cls = 'off';
     if (c.state === 'buzzed') { label = c.buzzer === me.pid ? 'DU!' : esc(buzzName); if (c.buzzer === me.pid) cls = 'won off'; }
     else if (locked) label = 'RAUS';
+    else if (held) { label = '🐢 ' + Math.ceil((holdUntil - Date.now()) / 1000); cls = 'held off'; }
     else if (early) { label = 'ZU FRÜH'; cls = 'early off'; }
     else if (c.state === 'reading') label = 'WARTEN';
     else if (c.pending || buzzSent) label = '…';
     else if (can) cls = 'live';
-    buzzer = `<button class="buzz ${cls}" style="--pc:${mine.color}" data-buzz aria-disabled="${can ? 'false' : 'true'}">${label}</button>`;
+    buzzer = `<button class="buzz ${cls}" style="--pc:${mine.color}" data-buzz data-hold="${held ? 1 : 0}" aria-disabled="${can ? 'false' : 'true'}">${label}</button>`;
     if (locked && c.state !== 'reading') extra += `<div class="status">${c.used && c.used.target === me.pid ? 'Kaffeepause – du setzt bei dieser Frage aus.' : 'Du bist für diese Frage raus.'}</div>`;
   }
 
@@ -747,10 +769,10 @@ function card() {
 function pickPanel() {
   const mine = S.players.find(p => p.id === me.pid);
   if (!mine || !mine.pending) return '';
-  const full = mine.jokers.length >= 3;
+  const full = Object.keys(JOKER).every(t => mine.jokers.includes(t));
   return `<div class="pickpanel"><b>Du hast ${mine.pending > 1 ? mine.pending + ' Joker' : 'einen Joker'} gewonnen!</b>
-    ${full ? '<div class="muted" style="margin-top:6px">Du hast schon 3 Joker. Setz erst einen ein, dann kannst du wählen.</div>' :
-      `<div class="jcards">${Object.keys(JOKER).map(t => `<button class="jcard" data-act="pickJoker" data-t="${t}"><span class="ic">${JOKER[t].icon}</span><b>${JOKER[t].name}</b><small>${JOKER[t].desc}</small></button>`).join('')}</div>`}</div>`;
+    ${full ? '<div class="muted" style="margin-top:6px">Du hast schon alle drei Joker. Setz erst einen ein, dann kannst du wählen.</div>' : ''}
+    <div class="jcards">${Object.keys(JOKER).map(t => { const has = mine.jokers.includes(t); return `<button class="jcard ${has ? 'owned' : ''}" data-act="pickJoker" data-t="${t}" ${has ? 'disabled' : ''}><span class="ic">${JOKER[t].icon}</span><b>${JOKER[t].name}</b><small>${has ? 'Hast du schon' : JOKER[t].desc}</small></button>`; }).join('')}</div></div>`;
 }
 
 /* ---------- Finale ---------- */
@@ -988,11 +1010,13 @@ document.addEventListener('click', e => {
     case 'adj': socket.emit('host:adjust', { id: d.id, delta: +d.d }); break;
     case 'adjcustom': { const v = document.getElementById('adjv'); const n = Number(v && v.value); if (Number.isFinite(n) && n !== 0) socket.emit('host:adjust', { id: d.id, delta: n }); break; }
     case 'setpicker': socket.emit('host:setPicker', { id: d.id }); break;
+    case 'theme': socket.emit('host:setSettings', { theme: d.id }); break;
+    case 'delay': { const pl = S.players.find(x => x.id === d.id); socket.emit('host:setHandicap', { id: d.id, delay: pl && pl.delay === +d.s ? 0 : +d.s }); break; }
     case 'give': socket.emit('host:giveJoker', { id: d.id, type: d.t }); break;
     case 'take': socket.emit('host:takeJoker', { id: d.id, type: d.t }); break;
     case 'mute': muted = !muted; localStorage.setItem('quiz-mute', muted ? '1' : '0'); if (muted) stopMedia(); updateLobbyMusic(); render(); break;
     case 'end': if (confirm('Spiel beenden und zur Siegerehrung?')) socket.emit('host:end'); break;
-    case 'leave': me = null; S = null; save(); history.replaceState(null, '', '/'); render(); break;
+    case 'leave': me = null; S = null; applyTheme(null); save(); history.replaceState(null, '', '/'); render(); break;
   }
 });
 render();

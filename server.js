@@ -12,7 +12,17 @@ const io = new Server(server);
 
 const MAX_CATS = 15, MAX_ROWS = 10;
 const JOKERS = ['double', 'coffee', 'risk'];
-const MAX_JOKERS = 3;          // so viele Joker kann ein Spieler gleichzeitig besitzen
+const MAX_JOKERS = 3;          // je Joker-Art nur einer pro Spieler, damit maximal 3
+const DELAYS = [1, 2, 3, 5];   // Handicap: Buzzer-Verzoegerung in Sekunden (0 = aus)
+const THEMES = [               // Designs fuer die Lobby; c = Vorschaufarben [Buehne, Vorhang, Akzent]
+  { id: 'classic', name: 'Showbühne', c: ['#12081a', '#6b0f24', '#f5b92e'] },
+  { id: 'neon', name: 'Neon Arcade', c: ['#07061a', '#3a0a5c', '#19e3ff'] },
+  { id: 'ocean', name: 'Ozean', c: ['#06141f', '#0b4d63', '#ff8f6b'] },
+  { id: 'forest', name: 'Wald', c: ['#0b140d', '#1f4a2b', '#e8c25a'] },
+  { id: 'halloween', name: 'Halloween', c: ['#0e0710', '#4a1068', '#ff7a18'] },
+  { id: 'candy', name: 'Candy', c: ['#1d0b27', '#8a1f6b', '#ffd166'] }
+];
+const themeOk = id => THEMES.some(t => t.id === id);
 const BUZZ_WINDOW = 250;       // ms: nach dem ersten Buzz werden weitere gesammelt, kuerzeste Reaktionszeit gewinnt
 const REVEAL_MULT = [2, 1.5, 1.25, 1];   // Punktfaktor je Reveal-Stufe (frueh buzzern lohnt sich)
 const SOUND_STAGES = [2, 5, 10, 0];      // Sekunden pro Sound-Stufe, 0 = komplett
@@ -363,7 +373,7 @@ function startTile(room, cat, row) {
     joker: null, riskDone: false, awards: [], winners: [], result: null, reward: false,
     audio: { n: 0, on: false },
     guesses: {}, order: [], revealed: 0, marks: {},
-    openedAt: 0, stage: 0, buzzes: [], shown: false,
+    openedAt: 0, buzzOpen: 0, stage: 0, buzzes: [], shown: false,
     t: {}
   };
   emitState(room);
@@ -497,7 +507,7 @@ function exportRoom(room) {
     version: 1, savedAt: new Date().toISOString(), code: room.code, hostToken: room.hostToken,
     phase: room.phase, data: { ...room.data, werte: room.data.values }, settings: room.settings, picker: room.picker, done: room.done, fin: room.fin,
     used: [...room.used], fixed: [...room.fixed], jokers: [...room.jokers],
-    players: room.players.map(p => ({ id: p.id, token: p.token, name: p.name, score: p.score, streak: p.streak, jokers: p.jokers, pendingPick: p.pendingPick, stats: p.stats, color: p.color, avatar: p.avatar })),
+    players: room.players.map(p => ({ id: p.id, token: p.token, name: p.name, score: p.score, streak: p.streak, jokers: p.jokers, delay: p.delay || 0, pendingPick: p.pendingPick, stats: p.stats, color: p.color, avatar: p.avatar })),
     current: serCur(room.current), blobs
   };
 }
@@ -510,7 +520,8 @@ function importRoom(save) {
   const players = (Array.isArray(save.players) ? save.players : []).slice(0, 30).map(p => ({
     id: str(p.id, 16) || crypto.randomBytes(4).toString('hex'), token: str(p.token, 40) || token(), name: str(p.name, 20) || 'Spieler',
     score: Number.isFinite(Number(p.score)) ? Math.round(Number(p.score)) : 0, streak: Number(p.streak) || 0,
-    jokers: (Array.isArray(p.jokers) ? p.jokers : []).filter(j => JOKERS.includes(j)).slice(0, MAX_JOKERS),
+    jokers: [...new Set(Array.isArray(p.jokers) ? p.jokers : [])].filter(j => JOKERS.includes(j)).slice(0, MAX_JOKERS),
+    delay: DELAYS.includes(Number(p.delay)) ? Number(p.delay) : 0,
     pendingPick: Math.max(0, Number(p.pendingPick) || 0), stats: { ...newStats(), ...(p.stats || {}) },
     color: Number.isInteger(p.color) ? p.color : 0, avatar: Number.isInteger(p.avatar) ? p.avatar : 0,
     socketId: null, connected: false
@@ -527,7 +538,7 @@ function importRoom(save) {
     code: null, hostToken: null, hostSocket: null, phase, data, players,
     used: new Set(save.used || []), fixed: new Set(save.fixed || []), jokers: new Set(save.jokers || []),
     current: cur, picker: save.picker || null, fin: save.fin || null, blobs,
-    settings: { joker: Number(s.joker) >= 0 ? Number(s.joker) : 5, answerTime: Number(s.answerTime) || 10, guessTime: Number(s.guessTime) || 90, comeback: Number.isFinite(Number(s.comeback)) ? Number(s.comeback) : 20 },
+    settings: { joker: Number(s.joker) >= 0 ? Number(s.joker) : 5, answerTime: Number(s.answerTime) || 10, guessTime: Number(s.guessTime) || 90, comeback: Number.isFinite(Number(s.comeback)) ? Number(s.comeback) : 20, theme: themeOk(s.theme) ? s.theme : 'classic' },
     touched: Date.now(), done: Number(save.done) || 0, interlude: null, timer: null, notices: [], undo: null
   };
 }
@@ -600,8 +611,13 @@ function stateFor(room, forHost) {
       used: cur.joker, audio: cur.audio, timeUp: cur.timeUp,
       left: cur.deadline && (cur.state === 'buzzed' || cur.state === 'open') ? Math.max(0, cur.deadline - Date.now()) : null,
       result: cur.result, winners: cur.winners, reward: cur.reward, awards: cur.awards,
-      buzzes: cur.buzzes
+      buzzes: cur.buzzes, hold: {}
     };
+    // Handicap: Restzeit der Buzzer-Verzoegerung je Spieler (nur Buzzer-/Reveal-Fragen, nur solange der Buzzer offen ist)
+    if (cur.state === 'open' && (cur.typ === 'buzzer' || cur.typ === 'reveal')) room.players.forEach(p => {
+      const left = (cur.buzzOpen || 0) + (p.delay || 0) * 1000 - Date.now();
+      if (p.delay && left > 0) current.hold[p.id] = left;
+    });
     if (cur.typ === 'reveal') current.reveal = {
       mode: q.sound ? 'sound' : 'bild', stage: cur.stage, dauer: q.dauer,
       elapsed: cur.openedAt ? Date.now() - cur.openedAt : 0, mult: REVEAL_MULT, soundStages: SOUND_STAGES
@@ -622,9 +638,9 @@ function stateFor(room, forHost) {
   return {
     code: room.code, phase: room.phase, picker: room.picker, titel: room.data.titel,
     hostOnline: !!room.hostSocket, settings: room.settings,
-    players: room.players.map(p => ({ id: p.id, name: p.name, score: p.score, connected: p.connected, jokers: p.jokers, pending: p.pendingPick,
+    players: room.players.map(p => ({ id: p.id, name: p.name, score: p.score, connected: p.connected, jokers: p.jokers, delay: p.delay || 0, pending: p.pendingPick,
       color: COLORS[p.color], avatar: AVATARS[p.avatar], streak: p.streak })),
-    looks: { colors: COLORS, avatars: AVATARS },
+    looks: { colors: COLORS, avatars: AVATARS }, themes: THEMES,
     done: room.done, total: room.data.kategorien.reduce((a, c) => a + c.fragen.length, 0),
     interlude: room.interlude ? { ...room.interlude, left: Math.max(0, room.interlude.until - Date.now()) } : null,
     notices: room.notices.filter(n => Date.now() - n.at < 12000).map(n => ({ id: n.id, kind: n.kind, text: n.text, age: Date.now() - n.at })),
@@ -669,7 +685,7 @@ io.on('connection', sock => {
     const room = {
       code, hostToken: token(), hostSocket: sock.id, phase: 'lobby',
       data, players: [], used: new Set(), fixed: fixedJokers(data), jokers: new Set(), current: null,
-      picker: null, fin: null, blobs: new Map(), settings: { joker: 5, answerTime: 10, guessTime: 90, comeback: 20 }, touched: Date.now(),
+      picker: null, fin: null, blobs: new Map(), settings: { joker: 5, answerTime: 10, guessTime: 90, comeback: 20, theme: 'classic' }, touched: Date.now(),
       done: 0, interlude: null, timer: null, notices: [], undo: null
     };
     rooms.set(code, room);
@@ -709,6 +725,7 @@ io.on('connection', sock => {
     if (cb !== null) room.settings.comeback = cb;
     if (a !== null) room.settings.answerTime = a;
     if (g !== null) room.settings.guessTime = g;
+    if (themeOk(s.theme)) room.settings.theme = s.theme;
     emitState(room);
   });
 
@@ -766,7 +783,7 @@ io.on('connection', sock => {
     if (cur.state !== 'reading') return;
     const q = curQ(room, cur);
     cur.state = 'open';
-    cur.openedAt = Date.now();
+    cur.openedAt = Date.now(); cur.buzzOpen = cur.openedAt;
     // Normale Buzzer-Frage: Frage erst auf Wunsch einblenden (der Host liest vor). Reveal und Schaetzen: sofort sichtbar.
     cur.shown = cur.typ !== 'buzzer' || !!(opts && opts.show);
     if (q.sound && cur.shown) cur.audio = { n: cur.audio.n + 1, on: true };
@@ -833,7 +850,7 @@ io.on('connection', sock => {
     const room = playerRoom();
     if (!room) return;
     const me = player(room, sock.data.pid);
-    if (!me || me.pendingPick < 1 || !JOKERS.includes(type) || me.jokers.length >= MAX_JOKERS) return;
+    if (!me || me.pendingPick < 1 || !JOKERS.includes(type) || me.jokers.includes(type)) return;
     me.jokers.push(type);
     me.pendingPick--;
     emitState(room);
@@ -843,8 +860,17 @@ io.on('connection', sock => {
   sock.on('host:giveJoker', ({ id, type } = {}) => {
     const room = hostRoom();
     const p = room && player(room, id);
-    if (!p || !JOKERS.includes(type) || p.jokers.length >= MAX_JOKERS) return;
+    if (!p || !JOKERS.includes(type) || p.jokers.includes(type)) return;
     p.jokers.push(type);
+    emitState(room);
+  });
+  // Handicap: Buzzer-Verzoegerung fuer einen Spieler setzen (0 = aus), bleibt bis der Host es abschaltet
+  sock.on('host:setHandicap', ({ id, delay } = {}) => {
+    const room = hostRoom();
+    const p = room && player(room, id);
+    const d = Number(delay);
+    if (!p || !(d === 0 || DELAYS.includes(d))) return;
+    p.delay = d;
     emitState(room);
   });
   sock.on('host:takeJoker', ({ id, type } = {}) => {
@@ -862,6 +888,7 @@ io.on('connection', sock => {
     const pid = sock.data.pid;
     const me = player(room, pid);
     if (!me || cur.locked.has(pid)) return;
+    if (me.delay && Date.now() < (cur.buzzOpen || 0) + me.delay * 1000 - 100) return;   // Handicap: Buzzer fuer diesen Spieler noch gesperrt
     let e = Number(elapsed);
     if (!Number.isFinite(e) || e < 0 || e > 99999) e = 99999;
     if (!cur.window) {
@@ -924,7 +951,7 @@ io.on('connection', sock => {
     if ((cur.typ !== 'buzzer' && cur.typ !== 'reveal') || cur.state !== 'buzzed') return;
     const p = player(room, cur.buzzer);
     const value = V(room)[cur.row];
-    if (!p) { clearTimeout(cur.t.answer); cur.timeUp = false; cur.deadline = 0; cur.buzzer = null; cur.state = 'open'; return emitState(room); }
+    if (!p) { clearTimeout(cur.t.answer); cur.timeUp = false; cur.deadline = 0; cur.buzzer = null; cur.state = 'open'; cur.buzzOpen = Date.now(); return emitState(room); }
     room.undo = snapshot(room, (correct ? 'Richtig' : 'Falsch') + ' für ' + p.name);
     clearTimeout(cur.t.answer); cur.timeUp = false; cur.deadline = 0;
     if (correct) {
@@ -941,7 +968,7 @@ io.on('connection', sock => {
       if (cur.joker && cur.joker.by === p.id && cur.joker.type === 'risk') cur.riskDone = true;
       cur.locked.add(p.id);
       cur.buzzer = null;
-      if (room.players.some(x => x.connected && !cur.locked.has(x.id))) cur.state = 'open';
+      if (room.players.some(x => x.connected && !cur.locked.has(x.id))) { cur.state = 'open'; cur.buzzOpen = Date.now(); }
       else toReveal(room, cur, 'none');
     }
     emitState(room);
@@ -963,7 +990,7 @@ io.on('connection', sock => {
     if (cur.state === 'reading') {
       if (cur.joker) {
         const p = player(room, cur.joker.by);
-        if (p) { p.jokers.push(cur.joker.type); p.stats.jokers--; }
+        if (p) { if (p.jokers.includes(cur.joker.type)) p.pendingPick++; else p.jokers.push(cur.joker.type); p.stats.jokers--; }   // schon wieder im Besitz (z. B. vom Host vergeben): freie Wahl statt Doppel
         cur.joker = null; cur.locked.clear();
       }
       toReveal(room, cur, 'skipped');
@@ -1115,7 +1142,7 @@ io.on('connection', sock => {
       if (cur.state === 'review' && cur.revealed >= cur.order.length) cur.state = 'judge';
       cur.winners = cur.winners.filter(x => x !== id);
       if (cur.window) cur.window.candidates = cur.window.candidates.filter(c => c.pid !== id);
-      if (cur.buzzer === id) { clearTimeout(cur.t.answer); cur.buzzer = null; cur.timeUp = false; cur.deadline = 0; cur.state = 'open'; }
+      if (cur.buzzer === id) { clearTimeout(cur.t.answer); cur.buzzer = null; cur.timeUp = false; cur.deadline = 0; cur.state = 'open'; cur.buzzOpen = Date.now(); }
     }
     emitState(room);
   });
@@ -1148,7 +1175,7 @@ io.on('connection', sock => {
       const name = str(msg.name, 20);
       if (room.players.length >= 30) return cb({ ok: false, error: 'Der Raum ist voll.' });
       p = { id: crypto.randomBytes(4).toString('hex'), token: token(), name, score: 0, streak: 0,
-            jokers: [], pendingPick: 0, stats: newStats(), socketId: null, connected: false, ...pickLook(room, msg.color, msg.avatar) };
+            jokers: [], delay: 0, pendingPick: 0, stats: newStats(), socketId: null, connected: false, ...pickLook(room, msg.color, msg.avatar) };
       room.players.push(p);
     }
     p.socketId = sock.id;

@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3.6
+# Quiz Show (Jeopardy-Stil) – Version 3.7
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -58,8 +58,17 @@ Podium plus Awards, die der Server aus dem Spielverlauf berechnet: Schnellster B
 ## Buzzer-Fairness
 Jedes Gerät misst selbst die Zeit zwischen „Buzzer wird sichtbar" und „Spieler drückt". Der Server sammelt nach dem ersten Buzz noch 250 ms lang weitere und nimmt die kürzeste Reaktionszeit. Wer drückt, bevor der Buzzer frei ist, wird 1 Sekunde gesperrt.
 
+## Designs
+In der Lobby gibt es ein Panel **Design** mit sechs Looks (Showbühne, Neon Arcade, Ozean, Wald, Halloween, Candy). Der Spielleiter wählt, das Design gilt sofort für alle im Raum und wird beim Spielstand sichern mitgespeichert. Geändert werden kann es nur in der Lobby.
+
+## Handicap (Debuff durch den Spielleiter)
+Im Spieler-Menü (Klick auf den Chip) gibt es die Zeile **Handicap** mit 🐢 **Buzzer-Verzögerung** 1 / 2 / 3 / 5 s. Das Handicap bleibt, bis der Spielleiter es wieder abschaltet (erneuter Klick auf den aktiven Wert oder „Aus"), und ist für alle als Badge am Chip sichtbar.
+- Der Buzzer des Spielers wird erst entsprechend später frei, mit Countdown auf seinem Knopf. Der Server erzwingt das: Buzzes während der Verzögerung werden ignoriert.
+- Gilt für Buzzer- und Reveal-Fragen, nicht für Schätzfragen und Finale. Öffnet der Buzzer nach einer falschen Antwort erneut, gilt die Verzögerung wieder ab diesem Moment.
+- Die Verzögerung bleibt beim Spielstand sichern und laden erhalten.
+
 ## Joker
-Joker gewinnt man, indem man ein **Joker-Feld** richtig beantwortet. Der Spieler sucht sich dann einen Joker aus (max. 3 im Besitz). Joker werden gesetzt, solange die Frage vorgelesen wird, und wirken auf genau diese Frage:
+Joker gewinnt man, indem man ein **Joker-Feld** richtig beantwortet. Der Spieler sucht sich dann einen Joker aus. **Jede Art gibt es nur einmal pro Spieler** (also maximal 3 im Besitz): Besessene Arten sind in der Auswahl ausgegraut, und auch der Spielleiter kann sie nicht doppelt vergeben. Wer alle drei hat, behält die offene Wahl, bis er einen einsetzt. Joker werden gesetzt, solange die Frage vorgelesen wird, und wirken auf genau diese Frage:
 
 | Joker | Wirkung |
 |---|---|
