@@ -21,6 +21,7 @@ const WHY = { correct: 'richtig', wrong: 'falsch', risk: 'Risiko verloren', stre
 const COLORS = ['#e0443a', '#f5b92e', '#41c27a', '#3b9ddd', '#a86be0', '#ff9ad5', '#ff8a3c', '#2ec4b6', '#c9b8a0', '#8ff0b8', '#ffe08a', '#6b8cff'];
 const AVATARS = ['🦊', '🐼', '🦁', '🐸', '🐙', '🦄', '🐧', '🐯', '🐨', '🦉', '🐵', '🐺', '🦖', '🐢', '🦋', '🐝', '🍕', '🎸', '🚀', '🎲', '🧙', '🤖', '👽', '🍩'];
 let lastSession = null;
+let myPhoto = null; try { myPhoto = localStorage.getItem('quiz-photo'); } catch (e) {}
 let look = JSON.parse(localStorage.getItem('quiz-look') || 'null') || { color: Math.floor(Math.random() * COLORS.length), avatar: Math.floor(Math.random() * AVATARS.length) };
 let lookOpen = false;
 const seenNotices = new Set();
@@ -31,7 +32,8 @@ const save2 = save;
 const pname = id => { const p = S && S.players.find(x => x.id === id); return p ? p.name : '?'; };
 const pOf = id => S && S.players.find(x => x.id === id);
 // Name mit Avatar (fuer Listen und Chips)
-const plabel = id => { const p = pOf(id); return p ? `<span class="av">${p.avatar}</span>${esc(p.name)}` : '?'; };
+const avHtml = p => p.photo ? `<img class="av avimg" src="/avatar/${S.code}/${p.id}?v=${p.photo}" alt="">` : `<span class="av">${p.avatar}</span>`;
+const plabel = id => { const p = pOf(id); return p ? `${avHtml(p)}${esc(p.name)}` : '?'; };
 const fmtSec = ms => (ms / 1000).toFixed(2).replace('.', ',') + ' s';
 const toUrl = u => /^https?:/i.test(u) || u.startsWith('/') ? u : '/' + encodeURI(u);
 const fmtTime = s => s >= 60 ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : String(s);
@@ -202,7 +204,7 @@ function tryRejoin() {
   if (!me) return;
   const done = r => { if (!r.ok) { lastSession = me; startError = 'Deine Sitzung wurde nicht gefunden (Server neu gestartet?). Mit Code und Namen erneut beitreten – dein Platz und deine Punkte bleiben erhalten.'; me = null; S = null; save(); render(); } };
   if (me.role === 'host') socket.emit('host:rejoin', { code: me.code, token: me.token }, done);
-  else socket.emit('player:join', { code: me.code, token: me.token }, done);
+  else socket.emit('player:join', { code: me.code, token: me.token, photo: myPhoto }, done);
 }
 socket.on('connect', () => { document.getElementById('banner').innerHTML = ''; tryRejoin(); });
 socket.on('disconnect', () => { document.getElementById('banner').innerHTML = '<div class="banner">Verbindung verloren, verbinde neu …</div>'; });
@@ -223,7 +225,7 @@ function buzzFlash(pid) {
   document.querySelectorAll('.buzzflash').forEach(e => e.remove());
   const el = document.createElement('div');
   el.className = 'buzzflash'; el.style.setProperty('--pc', pl.color);
-  el.innerHTML = `<div class="bf"><span class="av">${pl.avatar}</span>${esc(pl.name)}</div>`;
+  el.innerHTML = `<div class="bf">${avHtml(pl)}${esc(pl.name)}</div>`;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 1400);
 }
@@ -369,7 +371,13 @@ function lookPicker() {
     <div class="muted">Deine Farbe</div>
     <div class="swatches">${COLORS.map((c, i) => `<button class="sw ${look.color === i ? 'on' : ''}" style="--pc:${c}" data-act="color" data-i="${i}" aria-label="Farbe ${i + 1}"></button>`).join('')}</div>
     <div class="muted" style="margin-top:8px">Dein Avatar</div>
-    <div class="avgrid">${AVATARS.map((a, i) => `<button class="avb ${look.avatar === i ? 'on' : ''}" data-act="avatar" data-i="${i}">${a}</button>`).join('')}</div>
+    <div class="avgrid">${AVATARS.map((a, i) => `<button class="avb ${look.avatar === i && !myPhoto ? 'on' : ''}" data-act="avatar" data-i="${i}">${a}</button>`).join('')}</div>
+    <div class="muted" style="margin-top:8px">Oder dein eigenes Profilbild</div>
+    <div class="photorow">${myPhoto ? `<img class="avimg big" src="${myPhoto}" alt="">` : ''}
+      <button class="ghost sm" data-act="photopick">📷 ${myPhoto ? 'Anderes Bild' : 'Bild hochladen'}</button>
+      ${myPhoto ? '<button class="ghost sm" data-act="photoclear">Bild entfernen</button>' : ''}
+      <input type="file" id="photofile" accept="image/*" hidden></div>
+    <div class="err" id="photoerr"></div>
   </div>`;
 }
 function playerList() {
@@ -425,7 +433,7 @@ function viewHostLobby() {
         <div class="panel stack">
           <h2>Design</h2>
           <div class="muted">Das Design gilt für alle im Raum und lässt sich nur hier in der Lobby ändern.</div>
-          <div class="themes">${(S.themes || []).map(t => `<button class="ghost themeb ${S.settings.theme === t.id ? 'on' : ''}" data-act="theme" data-id="${t.id}" aria-pressed="${S.settings.theme === t.id}"><span class="tp" style="background:linear-gradient(90deg,${t.c[0]} 0 34%,${t.c[1]} 34% 67%,${t.c[2]} 67%)"></span>${esc(t.name)}</button>`).join('')}</div>
+          <div class="themes">${(S.themes || []).map(t => `<button class="ghost themeb ${S.settings.theme === t.id ? 'on' : ''}" data-act="theme" data-id="${t.id}" aria-pressed="${S.settings.theme === t.id}"><span class="tp" style="background:linear-gradient(90deg,${t.c[0]} 0 34%,${t.c[1]} 34% 67%,${t.c[2]} 67%)"></span><b>${esc(t.name)}</b><small>${esc(t.d || '')}</small></button>`).join('')}</div>
         </div>
         <div class="panel stack">
           <h2>Einstellungen</h2>
@@ -534,6 +542,7 @@ function playerMenu() {
       ${p.delay ? `<button class="ghost" data-act="delay" data-id="${p.id}" data-s="0">Aus</button>` : ''}</div>
     ${p.jokers.length ? `<div class="row"><span>Joker nehmen</span>
       ${Object.keys(owned).map(t => `<button class="ghost" data-act="take" data-id="${p.id}" data-t="${t}">${JOKER[t].icon} ${JOKER[t].name} (${owned[t]})</button>`).join('')}</div>` : ''}
+    ${p.photo ? `<div class="row"><span>Profilbild</span><button class="ghost" data-act="rmphoto" data-id="${p.id}">Bild entfernen</button></div>` : ''}
     <div class="row"><span></span><button class="bad sm" data-act="kick" data-id="${p.id}">Spieler entfernen</button><button class="ghost" data-act="menu" data-id="${p.id}">Schließen</button></div>
   </div>`;
 }
@@ -893,13 +902,38 @@ function viewEnd() {
   const rankOf = p => r.indexOf(p);
   $app.innerHTML = `<div class="wrap wide stack center">
     <div class="logo">Siegerehrung</div>
-    <div class="podium">${order.map(p => `<div class="pod" style="--pc:${p.color}"><div class="pav">${p.avatar}</div><div class="n">${esc(p.name)}</div><div class="s">${p.score}</div>
+    <div class="podium">${order.map(p => `<div class="pod" style="--pc:${p.color}"><div class="pav">${avHtml(p)}</div><div class="n">${esc(p.name)}</div><div class="s">${p.score}</div>
       <div class="bar" style="height:${h[rankOf(p)]}px">${rankOf(p) + 1}</div></div>`).join('')}</div>
     ${r.length > 3 ? `<div class="panel" style="text-align:left;max-width:520px;margin:0 auto"><ul class="plist">${r.slice(3).map((p, i) => `<li><span>${i + 4}. ${plabel(p.id)}</span><b>${p.score}</b></li>`).join('')}</ul></div>` : ''}
     ${S.awards.length ? `<h2 style="margin-top:24px">Awards</h2><div class="awards">${S.awards.map(a => `<div class="award"><div class="t">${esc(a.title)}</div><div class="n">${esc(a.names.join(' & '))}</div><div class="v">${esc(a.value)}</div></div>`).join('')}</div>` : ''}
     <button class="ghost" data-act="leave">Zur Startseite</button>
   </div>`;
 }
+
+/* ---------- Profilbild ---------- */
+function setPhoto(data) {
+  myPhoto = data;
+  try { data ? localStorage.setItem('quiz-photo', data) : localStorage.removeItem('quiz-photo'); } catch (e) {}
+  if (me && me.role === 'player' && S) socket.emit('player:photo', { data });
+  render();
+}
+// Bild wird im Browser auf 192x192 (quadratisch zugeschnitten) verkleinert, bevor es zum Server geht
+document.addEventListener('change', e => {
+  if (e.target.id !== 'photofile') return;
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const err = m => { const el = document.getElementById('photoerr'); if (el) el.textContent = m; };
+  if (!/^image\//.test(f.type)) return err('Das ist keine Bilddatei.');
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    const N = 192, cv = document.createElement('canvas'); cv.width = cv.height = N;
+    const side = Math.min(img.naturalWidth, img.naturalHeight), sx = (img.naturalWidth - side) / 2, sy = (img.naturalHeight - side) / 2;
+    cv.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, N, N);
+    setPhoto(cv.toDataURL('image/jpeg', 0.82));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); err('Das Bild konnte nicht gelesen werden (z. B. HEIC). Bitte JPG oder PNG nehmen.'); };
+  img.src = url;
+});
 
 /* ---------- Aktionen ---------- */
 // Buzzer: pointerdown statt click, damit es keine Verzoegerung gibt. Zu fruehes Druecken sperrt 1 Sekunde.
@@ -952,7 +986,7 @@ document.addEventListener('click', e => {
       const code = document.getElementById('jcode').value.trim().toUpperCase();
       const name = document.getElementById('jname').value.trim();
       localStorage.setItem('quiz-look', JSON.stringify(look));
-      socket.emit('player:join', { code, name, color: look.color, avatar: look.avatar }, r => {
+      socket.emit('player:join', { code, name, color: look.color, avatar: look.avatar, photo: myPhoto }, r => {
         if (!r.ok) return document.getElementById('err').textContent = r.error;
         me = { role: 'player', code: r.code, token: r.token, pid: r.pid, name: r.name }; save();
       });
@@ -993,7 +1027,10 @@ document.addEventListener('click', e => {
     case 'undo': if (confirm('Rückgängig: ' + S.canUndo + '?')) socket.emit('host:undo'); break;
     case 'dismiss': socket.emit('host:dismiss'); break;
     case 'color': look.color = +d.i; localStorage.setItem('quiz-look', JSON.stringify(look)); if (me && me.role === 'player') socket.emit('player:look', look); render(); break;
-    case 'avatar': look.avatar = +d.i; localStorage.setItem('quiz-look', JSON.stringify(look)); if (me && me.role === 'player') socket.emit('player:look', look); render(); break;
+    case 'photopick': { const f = document.getElementById('photofile'); if (f) f.click(); break; }
+    case 'photoclear': setPhoto(null); break;
+    case 'rmphoto': socket.emit('host:removePhoto', { id: d.id }); break;
+    case 'avatar': if (myPhoto) setPhoto(null); look.avatar = +d.i; localStorage.setItem('quiz-look', JSON.stringify(look)); if (me && me.role === 'player') socket.emit('player:look', look); render(); break;
     case 'looktoggle': lookOpen = !lookOpen; render(); break;
     case 'kick': if (confirm(pname(d.id) + ' wirklich entfernen?')) { socket.emit('host:kick', { id: d.id }); menuFor = null; } break;
     case 'snd': previewing = false; socket.emit('host:sound', { on: d.on === '1' }); break;

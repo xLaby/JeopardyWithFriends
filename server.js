@@ -14,14 +14,23 @@ const MAX_CATS = 15, MAX_ROWS = 10;
 const JOKERS = ['double', 'coffee', 'risk'];
 const MAX_JOKERS = 3;          // je Joker-Art nur einer pro Spieler, damit maximal 3
 const DELAYS = [1, 2, 3, 5];   // Handicap: Buzzer-Verzoegerung in Sekunden (0 = aus)
-const THEMES = [               // Designs fuer die Lobby; c = Vorschaufarben [Buehne, Vorhang, Akzent]
-  { id: 'classic', name: 'Showbühne', c: ['#12081a', '#6b0f24', '#f5b92e'] },
-  { id: 'neon', name: 'Neon Arcade', c: ['#07061a', '#3a0a5c', '#19e3ff'] },
-  { id: 'ocean', name: 'Ozean', c: ['#06141f', '#0b4d63', '#ff8f6b'] },
-  { id: 'forest', name: 'Wald', c: ['#0b140d', '#1f4a2b', '#e8c25a'] },
-  { id: 'halloween', name: 'Halloween', c: ['#0e0710', '#4a1068', '#ff7a18'] },
-  { id: 'candy', name: 'Candy', c: ['#1d0b27', '#8a1f6b', '#ffd166'] }
+const THEMES = [               // komplette Designs (Schrift, Formen, Hintergrund, Board- und Buzzer-Layout); c = Vorschaufarben
+  { id: 'classic', name: 'Showbühne', d: 'Vorhang, Scheinwerfer, Lichterrahmen, runder Buzzer', c: ['#12081a', '#6b0f24', '#f5b92e'] },
+  { id: 'arcade', name: 'Retro-Arcade', d: '8-Bit mit Pixel-Schrift, Scanlines, eckiges Board, Pixel-Buzzer', c: ['#0a0a1e', '#00e5a0', '#ff2e88'] },
+  { id: 'scifi', name: 'Sci-Fi Hologramm', d: 'Neon-Linien, Sternenhimmel, Hologramm-Board, Hexagon-Buzzer', c: ['#030b1a', '#0a3a6b', '#19e3ff'] },
+  { id: 'comic', name: 'Comic Pop-Art', d: 'Dicke Umrandungen, Rasterpunkte, Comic-Panels, Starburst-Buzzer', c: ['#ffd60a', '#e63946', '#1d4ed8'] },
+  { id: 'anime', name: 'Anime', d: 'Pastell, Sterne, Visual-Novel-Textbox, Bubble-Board, Herz-Buzzer', c: ['#ffd9ec', '#b28dff', '#ff5fa8'] }
 ];
+const MAX_PHOTO = 90 * 1024;
+// Profilbild: nur JPEG (vom Client verkleinert), Magic-Bytes werden geprueft
+function photoFromData(d) {
+  if (typeof d !== 'string' || d.length > 130000) return null;
+  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/]+={0,2})$/.exec(d);
+  if (!m) return null;
+  const b = Buffer.from(m[1], 'base64');
+  return b.length > 100 && b.length <= MAX_PHOTO && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? b : null;
+}
+function setPhoto(p, buf) { p.photo = buf || null; p.photoV = Date.now(); }
 const themeOk = id => THEMES.some(t => t.id === id);
 const BUZZ_WINDOW = 250;       // ms: nach dem ersten Buzz werden weitere gesammelt, kuerzeste Reaktionszeit gewinnt
 const REVEAL_MULT = [2, 1.5, 1.25, 1];   // Punktfaktor je Reveal-Stufe (frueh buzzern lohnt sich)
@@ -36,6 +45,13 @@ const rooms = new Map();
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/media', express.static(path.join(__dirname, 'media')));
+app.get('/avatar/:code/:pid', (req, res) => {
+  const r = rooms.get(String(req.params.code).toUpperCase());
+  const p = r && r.players.find(x => x.id === req.params.pid);
+  if (!p || !p.photo) return res.status(404).end();
+  res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+  res.send(p.photo);
+});
 app.get('/ping', (req, res) => res.type('text').send('ok'));   // Keep-alive gegen Einschlafen
 app.get('/fragen-vorlage.json', (req, res) =>
   res.download(path.join(__dirname, 'fragen.json'), 'fragen.json'));
@@ -507,7 +523,7 @@ function exportRoom(room) {
     version: 1, savedAt: new Date().toISOString(), code: room.code, hostToken: room.hostToken,
     phase: room.phase, data: { ...room.data, werte: room.data.values }, settings: room.settings, picker: room.picker, done: room.done, fin: room.fin,
     used: [...room.used], fixed: [...room.fixed], jokers: [...room.jokers],
-    players: room.players.map(p => ({ id: p.id, token: p.token, name: p.name, score: p.score, streak: p.streak, jokers: p.jokers, delay: p.delay || 0, pendingPick: p.pendingPick, stats: p.stats, color: p.color, avatar: p.avatar })),
+    players: room.players.map(p => ({ id: p.id, token: p.token, name: p.name, score: p.score, streak: p.streak, jokers: p.jokers, delay: p.delay || 0, photo: p.photo ? p.photo.toString('base64') : null, pendingPick: p.pendingPick, stats: p.stats, color: p.color, avatar: p.avatar })),
     current: serCur(room.current), blobs
   };
 }
@@ -522,6 +538,7 @@ function importRoom(save) {
     score: Number.isFinite(Number(p.score)) ? Math.round(Number(p.score)) : 0, streak: Number(p.streak) || 0,
     jokers: [...new Set(Array.isArray(p.jokers) ? p.jokers : [])].filter(j => JOKERS.includes(j)).slice(0, MAX_JOKERS),
     delay: DELAYS.includes(Number(p.delay)) ? Number(p.delay) : 0,
+    photo: photoFromData(typeof p.photo === 'string' ? 'data:image/jpeg;base64,' + p.photo : null), photoV: Date.now(),
     pendingPick: Math.max(0, Number(p.pendingPick) || 0), stats: { ...newStats(), ...(p.stats || {}) },
     color: Number.isInteger(p.color) ? p.color : 0, avatar: Number.isInteger(p.avatar) ? p.avatar : 0,
     socketId: null, connected: false
@@ -638,7 +655,7 @@ function stateFor(room, forHost) {
   return {
     code: room.code, phase: room.phase, picker: room.picker, titel: room.data.titel,
     hostOnline: !!room.hostSocket, settings: room.settings,
-    players: room.players.map(p => ({ id: p.id, name: p.name, score: p.score, connected: p.connected, jokers: p.jokers, delay: p.delay || 0, pending: p.pendingPick,
+    players: room.players.map(p => ({ id: p.id, name: p.name, score: p.score, connected: p.connected, jokers: p.jokers, delay: p.delay || 0, photo: p.photo ? p.photoV : 0, pending: p.pendingPick,
       color: COLORS[p.color], avatar: AVATARS[p.avatar], streak: p.streak })),
     looks: { colors: COLORS, avatars: AVATARS }, themes: THEMES,
     done: room.done, total: room.data.kategorien.reduce((a, c) => a + c.fragen.length, 0),
@@ -1090,6 +1107,22 @@ io.on('connection', sock => {
     clearTimeout(room.timer); room.interlude = null;
     emitState(room);
   });
+  sock.on('player:photo', ({ data } = {}) => {
+    const room = playerRoom();
+    const p = room && player(room, sock.data.pid);
+    if (!p) return;
+    if (data === null) setPhoto(p, null);
+    else { const b = photoFromData(data); if (!b) return; setPhoto(p, b); }
+    emitState(room);
+  });
+  // Moderation: der Spielleiter kann ein Profilbild entfernen
+  sock.on('host:removePhoto', ({ id } = {}) => {
+    const room = hostRoom();
+    const p = room && player(room, id);
+    if (!p || !p.photo) return;
+    setPhoto(p, null);
+    emitState(room);
+  });
   sock.on('player:look', ({ color, avatar } = {}) => {
     const room = playerRoom();
     const p = room && player(room, sock.data.pid);
@@ -1175,9 +1208,10 @@ io.on('connection', sock => {
       const name = str(msg.name, 20);
       if (room.players.length >= 30) return cb({ ok: false, error: 'Der Raum ist voll.' });
       p = { id: crypto.randomBytes(4).toString('hex'), token: token(), name, score: 0, streak: 0,
-            jokers: [], delay: 0, pendingPick: 0, stats: newStats(), socketId: null, connected: false, ...pickLook(room, msg.color, msg.avatar) };
+            jokers: [], delay: 0, photo: null, photoV: 0, pendingPick: 0, stats: newStats(), socketId: null, connected: false, ...pickLook(room, msg.color, msg.avatar) };
       room.players.push(p);
     }
+    if (!p.photo && msg.photo) { const b = photoFromData(msg.photo); if (b) setPhoto(p, b); }
     p.socketId = sock.id;
     p.connected = true;
     sock.data = { code: room.code, role: 'player', pid: p.id };

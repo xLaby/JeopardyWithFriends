@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 3.7
+# Quiz Show (Jeopardy-Stil) – Version 3.8
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -59,7 +59,20 @@ Podium plus Awards, die der Server aus dem Spielverlauf berechnet: Schnellster B
 Jedes Gerät misst selbst die Zeit zwischen „Buzzer wird sichtbar" und „Spieler drückt". Der Server sammelt nach dem ersten Buzz noch 250 ms lang weitere und nimmt die kürzeste Reaktionszeit. Wer drückt, bevor der Buzzer frei ist, wird 1 Sekunde gesperrt.
 
 ## Designs
-In der Lobby gibt es ein Panel **Design** mit sechs Looks (Showbühne, Neon Arcade, Ozean, Wald, Halloween, Candy). Der Spielleiter wählt, das Design gilt sofort für alle im Raum und wird beim Spielstand sichern mitgespeichert. Geändert werden kann es nur in der Lobby.
+In der Lobby gibt es ein Panel **Design**. Jedes Design ändert nicht nur die Farben, sondern das ganze Grunddesign: Schrift, Formen, Hintergrund, Animationen sowie das Layout von Board und Buzzer.
+- **Showbühne** (Standard): Vorhang, Scheinwerfer, Lichterrahmen, runder Buzzer.
+- **Retro-Arcade:** 8-Bit mit Pixel-Schrift, Scanlines, eckiges Board mit blinkenden Feldern, Pixel-Buzzer.
+- **Sci-Fi Hologramm:** Neon-Linien, Sternenhimmel mit Raster, Datenleisten als Kategorien, abgeschrägte Felder, Hexagon-Buzzer, Frage klappt als Hologramm auf.
+- **Comic Pop-Art:** dicke Umrandungen, Rasterpunkte, leicht gekippte Panels, Starburst-Buzzer.
+- **Anime:** Pastell mit Sternchen, Bubble-Board, Frage als Visual-Novel-Textbox am unteren Rand, Herz-Buzzer.
+
+Der Spielleiter wählt, das Design gilt sofort für alle im Raum und wird beim Spielstand sichern mitgespeichert. Geändert werden kann es nur in der Lobby.
+
+## Profilbilder
+Spieler können beim Beitreten oder in der Lobby ein eigenes Bild hochladen (Knopf unter den Emoji-Avataren). Das Bild wird im Browser auf 192×192 Pixel zugeschnitten und als JPEG verkleinert. Es erscheint überall dort, wo sonst das Emoji steht (Chips, Buzz-Anzeige, Listen, Siegerehrung). Ein Emoji auswählen oder „Bild entfernen“ schaltet zurück aufs Emoji.
+- Die Bilder liegen nur im Arbeitsspeicher des Servers (wie der Spielstand) und werden beim Spielstand sichern mit in die Datei geschrieben.
+- Der Spielleiter kann ein Bild jederzeit im Spieler-Menü (Klick auf den Chip) entfernen.
+- Das Bild bleibt im Browser gespeichert und wird beim nächsten Beitreten automatisch wieder verwendet.
 
 ## Handicap (Debuff durch den Spielleiter)
 Im Spieler-Menü (Klick auf den Chip) gibt es die Zeile **Handicap** mit 🐢 **Buzzer-Verzögerung** 1 / 2 / 3 / 5 s. Das Handicap bleibt, bis der Spielleiter es wieder abschaltet (erneuter Klick auf den aktiven Wert oder „Aus"), und ist für alle als Badge am Chip sichtbar.
