@@ -576,3 +576,55 @@ button.undo{color:var(--gold-l)}
 /* Helle Designs (Comic, Anime): dunkle Halbtransparenz-Flaechen durch helle Toene ersetzen */
 :where([data-theme="comic"]) :is(.pu,.log li,.glist li,.wagerbox,.finlist li,.stages .st){background:rgba(17,17,17,.07)}
 :where([data-theme="anime"]) :is(.a,.pu,.log li,.glist li,.wagerbox,.finlist li,.stages .st,.cd){background:rgba(155,93,229,.12)}
+
+/* ============================================================
+   Mini-Games: Sortieren, Zuordnen, Geoguessr
+   ============================================================ */
+.mi{display:inline-flex;align-items:center;gap:10px;min-width:0}
+.miimg{width:56px;height:56px;object-fit:cover;border-radius:8px;flex:none;background:#000}
+.mit{font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+.sortbox,.matchbox,.geobox,.hostmini{width:100%;margin-top:12px;text-align:left}
+.sortend{text-align:center;color:var(--muted);font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;margin:4px 0}
+.sortlist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.sortrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(var(--cream-rgb),.08);box-shadow:inset 0 0 0 1px rgba(var(--cream-rgb),.2)}
+.sortrow.dragging{background:rgba(var(--gold-rgb),.25);box-shadow:0 8px 20px rgba(0,0,0,.4),inset 0 0 0 2px var(--gold);position:relative;z-index:2}
+.sortrow.locked{opacity:.7}
+.sorth{touch-action:none;cursor:grab;font-size:1.35rem;padding:6px 8px;user-select:none;-webkit-user-select:none;color:var(--muted)}
+.sorti{flex:none;width:1.8em;height:1.8em;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:var(--ink);font-weight:800;font-size:.85rem}
+.sortrow .mi{flex:1}
+.sortbtns{display:flex;gap:4px}
+.matchbox{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.matchcol{display:grid;gap:8px;align-content:start}
+.mbtn{display:flex;align-items:center;justify-content:flex-start;gap:8px;text-align:left;padding:10px 12px;min-height:48px;border-radius:12px;background:rgba(var(--cream-rgb),.1);color:var(--cream);font-weight:700;
+  box-shadow:inset 0 0 0 2px rgba(var(--cream-rgb),.2),inset 6px 0 0 var(--mc,transparent);text-shadow:none}
+.mbtn.set{background:rgba(var(--cream-rgb),.18)}
+.mbtn.sel{background:rgba(var(--gold-rgb),.25);box-shadow:inset 0 0 0 3px var(--gold),inset 6px 0 0 var(--mc,transparent)}
+.mnum{flex:none;width:1.7em;height:1.7em;border-radius:50%;display:grid;place-items:center;background:var(--mc,#888);color:#111;font-size:.8rem;font-weight:800;text-shadow:none}
+.matchbox.locked .mbtn{opacity:.75}
+.geoslot{width:100%;position:relative;z-index:0}
+.geomap{height:min(52vh,430px);min-height:260px;border-radius:14px;overflow:hidden;box-shadow:inset 0 0 0 2px rgba(var(--gold-rgb),.5)}
+.geomap .leaflet-container,.geomap.leaflet-container{font-family:var(--body)}
+.geopin{background:none;border:0}
+.geopin span{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#fff;border:3px solid var(--pc,#e0443a);font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.5);overflow:hidden}
+.geopin img{width:100%;height:100%;object-fit:cover;border:0;border-radius:50%}
+.geopin .avimg{width:100%;height:100%;border:0}
+.geotarget span{background:#e0443a;border-color:#fff;color:#fff}
+.solist{margin:6px 0 0;padding-left:1.5em;display:grid;gap:6px}
+ul.solist{list-style:none;padding:0}
+.solist li{display:flex;align-items:center;gap:8px}
+.solist li.ok{color:var(--ok)}
+.solist li.no{color:var(--bad)}
+.mk2{flex:none;width:1.4em}
+.ranklist .rk{font-family:var(--display);color:var(--gold)}
+.ranklist .val small{color:var(--muted);font-weight:400}
+.hostmini{padding:10px 12px;border-radius:12px;background:rgba(var(--cream-rgb),.07)}
+@media (max-width:520px){.matchbox{gap:8px}.mbtn{padding:8px;font-size:.92rem}.miimg{width:44px;height:44px}}
+[data-theme="comic"] .sorti{color:#fff}
+[data-theme="comic"] .sortrow,[data-theme="comic"] .mbtn{border:3px solid #111;box-shadow:3px 3px 0 #111,inset 6px 0 0 var(--mc,transparent);background:#fff}
+[data-theme="comic"] .sortrow{box-shadow:3px 3px 0 #111}
+[data-theme="anime"] .sortrow,[data-theme="anime"] .mbtn{border:3px solid #fff;border-radius:20px;background:rgba(255,255,255,.9);box-shadow:0 0 0 3px #ffb3dc,inset 6px 0 0 var(--mc,transparent)}
+[data-theme="anime"] .sortrow{box-shadow:0 0 0 3px #ffb3dc}
+[data-theme="anime"] .geomap{border-radius:26px;box-shadow:0 0 0 4px #fff,0 0 0 7px #ff9ad5}
+[data-theme="arcade"] .geomap{box-shadow:0 0 0 4px var(--gold),0 0 0 8px #000}
+[data-theme="scifi"] .geomap{box-shadow:0 0 0 1px var(--gold),0 0 24px rgba(25,227,255,.4)}
+[data-theme="scifi"] .sortrow,[data-theme="scifi"] .mbtn{background:rgba(25,227,255,.07);box-shadow:inset 0 0 0 1px rgba(25,227,255,.45),inset 6px 0 0 var(--mc,transparent)}

@@ -56,3 +56,17 @@ body{overflow-x:hidden}
 .filebtn{cursor:pointer;display:inline-block;padding:.35em .6em;border-radius:8px;font-size:.82rem;font-weight:700;color:var(--cream);background:rgba(255,241,208,.08);box-shadow:inset 0 0 0 2px rgba(245,185,46,.55);white-space:nowrap}
 .filebtn:hover{filter:brightness(1.15)}
 .ehead a.muted{text-decoration:none}
+
+/* Mini-Game-Editor */
+.minied{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.22);border:1px dashed rgba(245,185,46,.3)}
+.irow{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-top:8px}
+.irow>input[type=text]{flex:1;min-width:150px}
+.inum{flex:none;width:1.8em;height:1.8em;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:var(--ink);font-weight:800;font-size:.85rem;margin-top:6px}
+.imedia{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ithumb{width:38px;height:38px;object-fit:cover;border-radius:6px}
+.ilink{width:190px}
+.ibtns{display:inline-flex;gap:4px;margin-top:4px}
+.pair .pside{flex:1;min-width:230px;display:grid;gap:6px}
+.pair>b{align-self:center;color:var(--gold-l)}
+.geomodal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:grid;place-items:center;z-index:2000;padding:14px}
+.geodlg{width:min(760px,100%);background:var(--tv,#1b1030);border-radius:16px;padding:14px;display:grid;gap:10px;box-shadow:0 0 0 2px var(--gold)}

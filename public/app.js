@@ -16,7 +16,9 @@ const JOKER = {
   coffee: { name: 'Kaffeepause', icon: '☕', desc: 'Ein Mitspieler deiner Wahl setzt bei dieser Frage aus.' },
   risk:   { name: 'Risiko', icon: '⚡', desc: 'Richtig: dreifache Punkte. Falsch oder keine Antwort: doppelter Fragenwert Abzug.' }
 };
-const WHY = { correct: 'richtig', wrong: 'falsch', risk: 'Risiko verloren', streak: 'Serien-Bonus' };
+const WHY = { correct: 'richtig', wrong: 'falsch', risk: 'Risiko verloren', streak: 'Serien-Bonus', rank: 'Rangpunkte' };
+let myMini = null, holdRender = 0, geoHold = false, pendingRender = false, geo = null;   // Mini-Games
+const MCOL = ['#e0443a', '#f5b92e', '#41c27a', '#3b9ddd', '#a86be0', '#ff8a3c', '#2ec4b6', '#ff9ad5'];
 // Muss zur Liste im Server passen (wird dort geprueft)
 const COLORS = ['#e0443a', '#f5b92e', '#41c27a', '#3b9ddd', '#a86be0', '#ff9ad5', '#ff8a3c', '#2ec4b6', '#c9b8a0', '#8ff0b8', '#ffe08a', '#6b8cff'];
 const AVATARS = ['🦊', '🐼', '🦁', '🐸', '🐙', '🦄', '🐧', '🐯', '🐨', '🦉', '🐵', '🐺', '🦖', '🐢', '🦋', '🐝', '🍕', '🎸', '🚀', '🎲', '🧙', '🤖', '👽', '🍩'];
@@ -310,6 +312,8 @@ function effects(prev, s) {
 
 /* ---------- Rendering ---------- */
 function render() {
+  if (holdRender > 0 || geoHold) { pendingRender = true; return; }   // waehrend Ziehen/Karte-Bewegen nicht neu aufbauen
+  pendingRender = false;
   const keep = { sel: null, scroll: 0, wager: null, adj: null };
   const g = document.getElementById('guess');
   if (g) { draft = g.value; keep.sel = document.activeElement === g ? [g.selectionStart, g.selectionEnd] : null; }
@@ -340,6 +344,7 @@ function render() {
   }
   if (floats.length) { const ids = floats.map(f => f.id); setTimeout(() => { floats = floats.filter(f => !ids.includes(f.id)); document.querySelectorAll('.float').forEach(e => { if (ids.includes(e.dataset.fid)) e.remove(); }); }, 1400); }
   drawPix();
+  mountGeo();
 }
 
 function viewStart() {
@@ -420,7 +425,7 @@ function viewHostLobby() {
           <h2>Fragen</h2>
           <div>${S.cats.length} Kategorien × ${S.values.length} Stufen (${S.values[0]}–${S.values[S.values.length - 1]}), ${nq} Fragen.
             ${S.finale ? `Finale „${esc(S.finale.name)}" mit ${S.finale.count} Frage${S.finale.count === 1 ? '' : 'n'}.` : '<span class="muted">Kein Finale in diesem Paket.</span>'}</div>
-          <div class="muted">Eigene Fragen? Lade deine <code>fragen.json</code> oder ein Sofort-Paket aus dem <a href="/editor.html" target="_blank">Fragen-Editor</a> hoch (<a href="/fragen-vorlage.json">Vorlage</a>).</div>
+          <div class="muted">Eigene Fragen? Lade deine <code>fragen.json</code> oder ein Sofort-Paket aus dem <a href="/editor.html" target="_blank">Fragen-Editor</a> hoch (<a href="/fragen-vorlage.json">Vorlage</a>, <a href="/beispiel-minigames.json" download>Beispiel mit Mini-Games</a>).</div>
           <input type="file" id="qfile" accept=".json,application/json">
           <div class="err" id="err"></div>
         </div>
@@ -615,6 +620,11 @@ function notices() {
 
 function resultText(c, guess) {
   if (c.result === 'skipped') return 'Frage übersprungen.';
+  if (c.mini && c.result !== 'none' && c.winners.length) {
+    const names = c.winners.map(pname).join(' und ');
+    return `${esc(names)} ${c.winners.length > 1 ? 'liegen' : 'liegt'} vorn!` + (c.reward ? ` Joker-Feld! ${esc(names)} darf sich einen Joker aussuchen.` : '');
+  }
+  if (c.mini && c.result === 'none') return 'Niemand hat etwas Richtiges abgegeben.';
   if (c.result === 'none') return guess ? 'Kein Gewinner bei dieser Schätzfrage.' : 'Niemand hat die Frage gelöst.';
   const names = c.winners.map(pname).join(' und ');
   let t = guess ? `${esc(names)} ${c.winners.length > 1 ? 'lagen' : 'lag'} am nächsten dran!` : `${esc(names)} hatte recht!`;
@@ -637,16 +647,17 @@ function card() {
   const mine = S.players.find(p => p.id === me.pid);
   const hidden = !host && !c.shown;
   const guess = c.typ === 'schaetzen', rev = c.typ === 'reveal';
+  const mini = c.typ === 'sortieren' || c.typ === 'zuordnen' || c.typ === 'geo';
   const img = c.state === 'reveal' && c.ansBild ? c.ansBild : c.bild;
   const buzzName = c.buzzer ? pname(c.buzzer) : '';
   const unit = c.einheit ? ' ' + esc(c.einheit) : '';
-  let status = '', btns = '', extra = '', play = '', cd = '', buzzer = '', guessBox = '', glist = '';
+  let status = '', btns = '', extra = '', play = '', cd = '', buzzer = '', guessBox = '', glist = '', miniBox = '';
 
   // Status
   if (c.state === 'reading') status = host
     ? 'Lies die Frage vor. Solange kann ein Spieler einen Joker setzen. Dann freigeben.'
     : 'Der Spielleiter liest die Frage vor. Bis zur Freigabe kann ein Spieler einen Joker setzen.';
-  else if (c.state === 'open') status = guess
+  else if (c.state === 'open') status = mini ? miniStatus(c, host) : guess
     ? (host ? `${c.guess.count} ${c.guess.count === 1 ? 'Schätzung' : 'Schätzungen'} abgegeben.` : 'Gib deine Schätzung ab!')
     : (c.pending ? 'Buzz! Wer war schneller …' : rev ? `Buzzer ist offen – je früher, desto mehr Punkte (jetzt ${fmtMult(c.reveal.mult[stageNow(c)])}).`
       : !c.shown ? (host ? 'Buzzer offen – die Spieler sehen die Frage noch nicht.' : 'Buzzer ist offen – du darfst schon während des Vorlesens drücken!') : 'Buzzer ist offen!');
@@ -655,7 +666,7 @@ function card() {
   else if (c.state === 'judge') status = host ? (c.guess.total ? 'Markiere pro Schätzung: Gewinner (✓) oder nicht (✗). Mehrere Gewinner sind möglich.' : 'Niemand hat geschätzt – einfach auswerten.') : 'Der Spielleiter bewertet die Schätzungen …';
   else status = resultText(c, guess);
 
-  if ((c.state === 'buzzed' || (guess && c.state === 'open')) && c.left != null)
+  if ((c.state === 'buzzed' || ((guess || mini) && c.state === 'open')) && c.left != null)
     cd = `<div class="cdwrap ${c.timeUp ? 'over' : ''}"><span class="cd">${fmtTime(Math.ceil(c.left / 1000))}</span></div>`;
 
   if (c.buzzes && c.buzzes.length && c.state !== 'reading') {
@@ -678,7 +689,7 @@ function card() {
   }
 
   // Spieler: Buzzer (auch beim Vorlesen sichtbar, damit zu fruehes Druecken erkannt wird)
-  if (!host && mine && !guess && c.state !== 'reveal') {
+  if (!host && mine && !guess && !mini && c.state !== 'reveal') {
     const locked = c.locked.includes(me.pid), early = Date.now() < lockUntil;
     const held = c.state === 'open' && holdUntil > Date.now();   // Handicap: Buzzer fuer mich noch nicht frei
     const can = c.state === 'open' && !c.pending && !locked && !buzzSent && !early && !held;
@@ -707,6 +718,14 @@ function card() {
   }
   if (!host && mine && guess && c.state === 'reading' && c.locked.includes(me.pid)) extra += '<div class="status">Kaffeepause – du setzt bei dieser Frage aus.</div>';
 
+  // Mini-Games: Spielbereich, Loesung fuer den Host, Rangliste nach der Wertung
+  if (mini) {
+    if (!host && mine && c.locked.includes(me.pid) && c.state !== 'reveal') extra += '<div class="status">Kaffeepause – du setzt bei dieser Frage aus.</div>';
+    else if (c.state === 'open' && !host && mine) miniBox = c.typ === 'sortieren' ? sortPlay(c) : c.typ === 'zuordnen' ? matchPlay(c) : geoPlay(c);
+    else if (host && (c.state === 'reading' || c.state === 'open')) miniBox = hostMini(c);
+    else if (c.state === 'reveal' && c.mini.result) miniBox = miniReveal(c);
+  }
+
   // Schaetz-Liste (Host sieht sie live, Spieler erst beim Aufdecken; Bewertung durch den Host)
   if (guess && (c.state === 'review' || c.state === 'judge' || c.state === 'reveal' || (host && c.state === 'open'))) {
     const list = c.guess.list, marks = c.guess.marks || {};
@@ -734,10 +753,10 @@ function card() {
     const more = rev && c.reveal.mode === 'sound' && c.state === 'open' && c.reveal.stage < 3
       ? `<button data-act="stage">Länger abspielen (${c.reveal.soundStages[c.reveal.stage + 1] ? c.reveal.soundStages[c.reveal.stage + 1] + ' s' : 'komplett'})</button>` : '';
     const showBtn = !c.shown && c.state !== 'reveal' && c.typ === 'buzzer' && c.state !== 'reading' ? '<button data-act="show">Frage einblenden</button>' : '';
-    if (c.state === 'reading') btns = guess || rev
+    if (c.state === 'reading') btns = mini ? '<button data-act="open">Mini-Game freigeben</button><button class="ghost" data-act="skip">Frage überspringen</button>' : guess || rev
       ? `<button data-act="open">${guess ? 'Schätzen freigeben' : 'Buzzer freigeben'}</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}<button class="ghost" data-act="skip">Frage überspringen</button>`
       : `<button data-act="open">Buzzer freigeben</button><button class="ghost" data-act="openshow">Buzzer + Frage freigeben</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}<button class="ghost" data-act="skip">Frage überspringen</button>`;
-    else if (c.state === 'open') btns = guess ? `<button data-act="skip">Zeit beenden</button>${snd}` : `${showBtn}${more}${snd}<button class="ghost" data-act="skip">Niemand weiß es</button>`;
+    else if (c.state === 'open') btns = mini ? '<button data-act="skip">Zeit beenden</button>' : guess ? `<button data-act="skip">Zeit beenden</button>${snd}` : `${showBtn}${more}${snd}<button class="ghost" data-act="skip">Niemand weiß es</button>`;
     else if (c.state === 'buzzed') btns = `${showBtn}<button class="ok" data-act="judge" data-v="1">Richtig, +${gain(c, c.buzzer)}</button><button class="bad ${c.timeUp ? 'hl' : ''}" data-act="judge" data-v="0">Falsch, −${penalty(c, c.buzzer, v)}</button>${snd}`;
     else if (c.state === 'review') btns = `<button data-act="revealNext">Nächste Antwort aufdecken (${c.guess.revealed + 1}/${c.guess.total})</button>`;
     else if (c.state === 'judge') { const ok = c.guess.list.every(g => typeof (c.guess.marks || {})[g.pid] === 'boolean'); btns = `<button data-act="resolve" ${ok ? '' : 'disabled'}>Auswerten</button>`; }
@@ -747,7 +766,7 @@ function card() {
   const blocked = c.sound && c.audio.on && audioBlocked ? '<div class="btns"><button data-act="tapsound">Sound starten</button></div>' : '';
   const merr = c.sound && mediaError && host ? `<div class="status soft" style="color:#ff9a90">${esc(mediaError)}</div>` : '';
   const showAns = host || c.state === 'reveal';
-  const hostAns = showAns ? `<div class="a">Antwort: <b>${esc(c.answer)}${guess ? unit : ''}</b></div>` : '';
+  const hostAns = showAns && (!mini || c.answer) ? `<div class="a">Antwort: <b>${esc(c.answer)}${guess ? unit : ''}</b></div>` : '';
   const hint = host && c.state === 'reading' ? `<div class="status soft">${c.typ === 'buzzer' ? 'Die Spieler sehen die Frage erst, wenn du sie einblendest – der Buzzer kann vorher schon offen sein.' : `Die Spieler sehen die Frage${c.hasSound ? ' und hören den Sound' : ''} erst nach der Freigabe.`}${rev ? ' Reveal-Frage: je früher gebuzzert wird, desto höher der Faktor.' : ''}${rev && c.reveal.mode === 'sound' && c.bild ? ' <b>Achtung:</b> Bild und Sound gesetzt – Reveal läuft über den Sound, das Bild wird nicht verpixelt.' : ''}</div>` : '';
 
   // Bild: bei Reveal-Fragen verpixelt (Stufe steigt mit der Zeit), sonst normal
@@ -762,7 +781,7 @@ function card() {
   }
 
   return `<div class="ov"><div class="card ${cardFresh ? 'enter' : ''}">
-    <div class="meta"><span>${esc(c.catName)}, ${v} Punkte</span>${guess ? '<span class="typtag">Schätzfrage</span>' : ''}${rev ? '<span class="typtag">Reveal</span>' : ''}</div>
+    <div class="meta"><span>${esc(c.catName)}, ${v} Punkte</span>${guess ? '<span class="typtag">Schätzfrage</span>' : ''}${rev ? '<span class="typtag">Reveal</span>' : ''}${c.typ === 'sortieren' ? '<span class="typtag">Sortieren</span>' : ''}${c.typ === 'zuordnen' ? '<span class="typtag">Zuordnen</span>' : ''}${c.typ === 'geo' ? '<span class="typtag">Geoguessr</span>' : ''}</div>
     ${c.joker ? '<div class="joker">Joker-Feld! Richtig beantwortet gibt einen Joker</div>' : ''}
     ${hidden ? `<div class="q waiting">${c.state === 'reading' ? 'Die Frage wird vorgelesen …' : 'Die Frage wird vorgelesen – Buzzer ist offen!'}</div>` : ''}
     ${pic}
@@ -770,10 +789,164 @@ function card() {
     ${c.question && !hidden ? `<div class="q">${esc(c.question)}</div>` : ''}
     ${rev && !hidden ? stages(c) : ''}
     ${blocked}${merr}${hostAns}${hint}
-    <div class="status">${status}</div>${cd}${extra}${glist}${play}${buzzer}${guessBox}
+    <div class="status">${status}</div>${cd}${extra}${glist}${play}${buzzer}${guessBox}${miniBox}
     <div class="btns">${btns}</div>
   </div></div>`;
 }
+
+/* ---------- Mini-Games (Sortieren, Zuordnen, Geoguessr) ---------- */
+const miniItem = it => `<span class="mi">${it.bild ? `<img class="miimg" src="${esc(toUrl(it.bild))}" alt="" onerror="this.remove()">` : ''}${it.text ? `<span class="mit">${esc(it.text)}</span>` : ''}</span>`;
+// Lokaler Spielstand zur aktuellen Frage; nach einem Neuladen wird die Abgabe vom Server uebernommen
+function miniState(c) {
+  const k = c.cat + '-' + c.row;
+  if (!myMini || myMini.key !== k) {
+    const mine = c.mini.mine;
+    myMini = { key: k, done: !!(mine && mine.done), sel: null, order: null, map: {}, pin: null };
+    if (mine) { if (c.typ === 'sortieren') myMini.order = mine.ans.slice(); else if (c.typ === 'zuordnen') myMini.map = { ...mine.ans }; else myMini.pin = { ...mine.ans }; }
+  }
+  if (c.typ === 'sortieren' && !myMini.order && c.mini.items) myMini.order = c.mini.items.map(i => i.id);
+  if (c.mini.mine && c.mini.mine.done) myMini.done = true;
+  return myMini;
+}
+function sendMini(done) {
+  const m = myMini, c = S && S.current;
+  if (!m || !c) return;
+  const ans = c.typ === 'sortieren' ? m.order : c.typ === 'zuordnen' ? m.map : m.pin;
+  if (ans) socket.emit('player:mini', { ans, done: !!done });
+}
+function miniStatus(c, host) {
+  const n = S.players.filter(p => p.connected && !c.locked.includes(p.id)).length, d = c.mini.submitted.length;
+  if (host) return `${d} von ${n} fertig.`;
+  if (c.locked.includes(me.pid)) return 'Du setzt bei dieser Frage aus.';
+  if ((myMini && myMini.key === c.cat + '-' + c.row && myMini.done) || (c.mini.mine && c.mini.mine.done)) return `Abgegeben! Warte auf die anderen (${d} von ${n} fertig).`;
+  return { sortieren: 'Bring die Begriffe in die richtige Reihenfolge und drück auf „Fertig“. Bei Gleichstand gewinnt, wer schneller fertig ist.',
+    zuordnen: 'Verbinde die passenden Paare: erst links antippen, dann rechts. Bei Gleichstand gewinnt, wer schneller fertig ist.',
+    geo: 'Tippe auf die Karte, um deinen Pin zu setzen, und bestätige ihn. Wer am nächsten dran ist, gewinnt.' }[c.typ];
+}
+const doneRow = (m, can) => m.done ? '<div class="status soft">Abgegeben ✓</div>' : `<div class="row"><button data-act="minidone" ${can ? '' : 'disabled'}>Fertig</button></div>`;
+function sortPlay(c) {
+  const m = miniState(c), items = Object.fromEntries(c.mini.items.map(i => [i.id, i])), dis = m.done;
+  return `<div class="sortbox">${c.mini.anfang ? `<div class="sortend">▲ ${esc(c.mini.anfang)}</div>` : ''}
+    <ol class="sortlist">${m.order.map((id, i) => `<li class="sortrow ${dis ? 'locked' : ''}" data-id="${id}">
+      <span class="sorth" ${dis ? '' : 'data-drag'} title="Zum Verschieben ziehen">☰</span><span class="sorti">${i + 1}</span>${miniItem(items[id])}
+      <span class="sortbtns"><button class="ghost sm" data-act="msort" data-i="${i}" data-d="-1" ${dis || i === 0 ? 'disabled' : ''}>▲</button><button class="ghost sm" data-act="msort" data-i="${i}" data-d="1" ${dis || i === m.order.length - 1 ? 'disabled' : ''}>▼</button></span></li>`).join('')}</ol>
+    ${c.mini.ende ? `<div class="sortend">▼ ${esc(c.mini.ende)}</div>` : ''}${doneRow(m, true)}</div>`;
+}
+function matchPlay(c) {
+  const m = miniState(c), L = c.mini.left, R = c.mini.right, dis = m.done;
+  const idx = Object.fromEntries(L.map((l, i) => [l.id, i])), owner = {};
+  Object.entries(m.map).forEach(([l, r]) => { owner[r] = l; });
+  return `<div class="matchbox ${dis ? 'locked' : ''}"><div class="matchcol">${L.map((l, i) => `<button class="mbtn ${m.sel === l.id ? 'sel' : ''} ${m.map[l.id] ? 'set' : ''}" style="--mc:${MCOL[i % MCOL.length]}" data-act="mleft" data-id="${l.id}"><span class="mnum">${i + 1}</span>${miniItem(l)}</button>`).join('')}</div>
+    <div class="matchcol">${R.map(r => { const o = owner[r.id], i = o != null ? idx[o] : -1; return `<button class="mbtn ${o ? 'set' : ''}" style="--mc:${i >= 0 ? MCOL[i % MCOL.length] : 'transparent'}" data-act="mright" data-id="${r.id}">${o ? `<span class="mnum">${i + 1}</span>` : ''}${miniItem(r)}</button>`; }).join('')}</div></div>
+    ${doneRow(m, Object.keys(m.map).length > 0)}`;
+}
+function geoPlay(c) {
+  const m = miniState(c);
+  return `<div class="geobox"><div id="geoslot" class="geoslot"></div>${m.done ? '<div class="status soft">Abgegeben ✓</div>' : `<div class="row"><button data-act="minidone" ${m.pin ? '' : 'disabled'}>${m.pin ? 'Pin bestätigen' : 'Erst einen Pin setzen'}</button></div>`}</div>`;
+}
+function hostMini(c) {
+  const t = c.mini.hostTruth || [];
+  let sol = '';
+  if (c.typ === 'sortieren') sol = `<ol class="solist">${t.map(it => `<li>${miniItem(it)}</li>`).join('')}</ol>${c.mini.anfang || c.mini.ende ? `<div class="muted">${esc(c.mini.anfang || '')} ➜ ${esc(c.mini.ende || '')}</div>` : ''}`;
+  else if (c.typ === 'zuordnen') sol = `<ul class="solist">${t.map(p => `<li>${miniItem(p.links)} <b>→</b> ${miniItem(p.rechts)}</li>`).join('')}</ul>`;
+  else sol = `<div id="geoslot" class="geoslot"></div>`;
+  const who = c.state === 'open' ? `<div class="status soft">Fertig: ${c.mini.submitted.length ? esc(c.mini.submitted.map(pname).join(', ')) : 'noch niemand'}</div>` : '';
+  return `<div class="hostmini"><div class="muted">Lösung (nur für dich sichtbar)</div>${sol}${who}</div>`;
+}
+function miniRanking(c) {
+  const r = c.mini.result;
+  const rows = r.ranking.map(x => `<li class="${x.rank === 1 ? 'win' : ''}"><span><b class="rk">${x.rank ? x.rank + '.' : '–'}</b> ${plabel(x.pid)}</span><span class="val">${esc(x.detail)}<small> · ${fmtSec(x.ms)}${x.factor ? ' · ' + Math.round(x.factor * 100) + ' %' : ''}</small></span></li>`).join('');
+  const none = S.players.filter(p => !r.ranking.some(x => x.pid === p.id) && !c.locked.includes(p.id));
+  return `<ul class="glist ranklist">${rows}${none.length ? `<li class="muted"><span>Keine Abgabe</span><span>${esc(none.map(p => p.name).join(', '))}</span></li>` : ''}</ul>`;
+}
+function miniReveal(c) {
+  const r = c.mini.result, mine = c.mini.mine ? c.mini.mine.ans : null;
+  const mark = ok => mine ? `<b class="mk2">${ok ? '✓' : '✗'}</b>` : '';
+  let sol = '';
+  if (c.typ === 'sortieren') sol = `<div class="muted">Richtige Reihenfolge${mine ? ' (✓/✗ = deine Antwort)' : ''}</div><ol class="solist">${r.truth.map((it, i) => `<li class="${mine ? (mine[i] === it.id ? 'ok' : 'no') : ''}">${mark(mine && mine[i] === it.id)}${miniItem(it)}</li>`).join('')}</ol>`;
+  else if (c.typ === 'zuordnen') sol = `<div class="muted">Richtige Paare${mine ? ' (✓/✗ = deine Antwort)' : ''}</div><ul class="solist">${r.truth.map(p => `<li class="${mine ? (mine[p.lid] === p.rid ? 'ok' : 'no') : ''}">${mark(mine && mine[p.lid] === p.rid)}${miniItem(p.links)} <b>→</b> ${miniItem(p.rechts)}</li>`).join('')}</ul>`;
+  else sol = '<div id="geoslot" class="geoslot"></div>';
+  return sol + miniRanking(c);
+}
+// Karte: ein einziges Leaflet-Objekt pro Frage, das bei jedem Neuaufbau der Seite in den neuen Platzhalter umgehaengt wird
+const TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png';
+const pinIcon = (inner, color, cls) => L.divIcon({ className: 'geopin ' + (cls || ''), html: `<span style="--pc:${color}">${inner}</span>`, iconSize: [36, 36], iconAnchor: [18, 18] });
+function releaseRender() { holdRender = Math.max(0, holdRender - 1); if (!holdRender && !geoHold && pendingRender) render(); }
+function geoEnsure(key) {
+  if (geo && geo.key === key) return geo;
+  if (geo) { try { geo.map.remove(); } catch (e) {} }
+  const el = document.createElement('div'); el.className = 'geomap';
+  const map = L.map(el, { minZoom: 2, maxZoom: 12, maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1, worldCopyJump: false }).setView([25, 10], 2);
+  L.tileLayer(TILES, { subdomains: 'abcd', maxZoom: 12, noWrap: true, attribution: '© OpenStreetMap-Mitwirkende © CARTO' }).addTo(map);
+  const g = geo = { key, el, map, layer: L.layerGroup().addTo(map), play: false, fitted: '' };
+  let t = null;
+  const done = () => { clearTimeout(t); t = setTimeout(() => { geoHold = false; if (pendingRender) render(); }, 250); };
+  map.on('movestart zoomstart', () => { geoHold = true; clearTimeout(t); t = setTimeout(() => { geoHold = false; if (pendingRender) render(); }, 3000); });
+  map.on('moveend zoomend', done);
+  map.on('click', e => {
+    if (!g.play || !S || !S.current) return;
+    const ll = e.latlng.wrap(), m = miniState(S.current);
+    m.pin = { lat: +ll.lat.toFixed(4), lng: +ll.lng.toFixed(4) };
+    socket.emit('player:mini', { ans: m.pin });
+    drawGeo();
+  });
+  return g;
+}
+function drawGeo() {
+  const c = S && S.current, g = geo;
+  if (!c || c.typ !== 'geo' || !g) return;
+  const host = me.role === 'host', mine = S.players.find(p => p.id === me.pid);
+  g.layer.clearLayers();
+  if (c.state === 'reveal' && c.mini.result) {
+    const t = c.mini.result.truth, pts = [[t.lat, t.lng]];
+    c.mini.result.ranking.forEach(r => {
+      if (!r.pin) return;
+      const p = pOf(r.pid), col = p ? p.color : '#888';
+      L.polyline([[r.pin.lat, r.pin.lng], [t.lat, t.lng]], { color: col, weight: 3, dashArray: '6 7' }).addTo(g.layer);
+      L.marker([r.pin.lat, r.pin.lng], { icon: pinIcon(p ? avHtml(p) : '📍', col) }).addTo(g.layer);
+      pts.push([r.pin.lat, r.pin.lng]);
+    });
+    L.marker([t.lat, t.lng], { icon: pinIcon('🎯', '#e0443a', 'geotarget'), zIndexOffset: 1000 }).addTo(g.layer);
+    if (g.fitted !== 'reveal') { g.fitted = 'reveal'; if (pts.length > 1) g.map.fitBounds(pts, { padding: [45, 45], maxZoom: 7 }); else g.map.setView(pts[0], 5); }
+  } else if (host && c.mini.hostTruth) {
+    L.marker([c.mini.hostTruth.lat, c.mini.hostTruth.lng], { icon: pinIcon('🎯', '#e0443a', 'geotarget') }).addTo(g.layer);
+  } else if (myMini && myMini.key === c.cat + '-' + c.row && myMini.pin) {
+    L.marker([myMini.pin.lat, myMini.pin.lng], { icon: pinIcon(mine ? avHtml(mine) : '📍', mine ? mine.color : '#e0443a') }).addTo(g.layer);
+  }
+}
+function mountGeo() {
+  const slot = document.getElementById('geoslot');
+  if (!slot) return;
+  const c = S && S.current;
+  if (!c || c.typ !== 'geo') return;
+  if (typeof L === 'undefined') { slot.innerHTML = '<div class="status soft">Die Karte konnte nicht geladen werden.</div>'; return; }
+  const g = geoEnsure(c.cat + '-' + c.row);
+  if (g.el.parentNode !== slot) { slot.appendChild(g.el); setTimeout(() => g.map.invalidateSize(), 60); }
+  g.play = me.role === 'player' && c.state === 'open' && !c.locked.includes(me.pid) && !(myMini && myMini.key === c.cat + '-' + c.row && myMini.done) && !(c.mini.mine && c.mini.mine.done);
+  if (g.play) miniState(c);
+  drawGeo();
+}
+// Sortieren per Ziehen am Griff (Touch und Maus); die Buttons ▲▼ gehen auch
+document.addEventListener('pointerdown', e => {
+  const h = e.target.closest && e.target.closest('.sorth[data-drag]');
+  if (!h) return;
+  const row = h.closest('.sortrow'), list = row.parentNode;
+  e.preventDefault();
+  holdRender++; row.classList.add('dragging');
+  const move = ev => {
+    let before = null;
+    for (const r of [...list.children]) { if (r === row) continue; const b = r.getBoundingClientRect(); if (ev.clientY < b.top + b.height / 2) { before = r; break; } }
+    list.insertBefore(row, before);
+  };
+  const up = () => {
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
+    row.classList.remove('dragging');
+    if (myMini) { myMini.order = [...list.children].map(r => r.dataset.id); sendMini(false); }
+    releaseRender();
+    render();
+  };
+  document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+});
 
 function pickPanel() {
   const mine = S.players.find(p => p.id === me.pid);
@@ -1027,6 +1200,15 @@ document.addEventListener('click', e => {
     case 'undo': if (confirm('Rückgängig: ' + S.canUndo + '?')) socket.emit('host:undo'); break;
     case 'dismiss': socket.emit('host:dismiss'); break;
     case 'color': look.color = +d.i; localStorage.setItem('quiz-look', JSON.stringify(look)); if (me && me.role === 'player') socket.emit('player:look', look); render(); break;
+    case 'msort': { const m = myMini; if (!m || m.done) break; const i = +d.i, j = i + +d.d; if (j < 0 || j >= m.order.length) break; [m.order[i], m.order[j]] = [m.order[j], m.order[i]]; sendMini(false); render(); break; }
+    case 'mleft': { const m = myMini; if (!m || m.done) break; m.sel = m.sel === d.id ? null : d.id; render(); break; }
+    case 'mright': {
+      const m = myMini; if (!m || m.done) break;
+      if (m.sel) { Object.keys(m.map).forEach(l => { if (m.map[l] === d.id) delete m.map[l]; }); m.map[m.sel] = d.id; m.sel = null; }
+      else Object.keys(m.map).forEach(l => { if (m.map[l] === d.id) delete m.map[l]; });
+      sendMini(false); render(); break;
+    }
+    case 'minidone': { const m = myMini, t = S && S.current && S.current.typ; if (!m || m.done) break; if (t === 'geo' ? !m.pin : t === 'zuordnen' ? !Object.keys(m.map).length : false) break; m.done = true; sendMini(true); render(); break; }
     case 'photopick': { const f = document.getElementById('photofile'); if (f) f.click(); break; }
     case 'photoclear': setPhoto(null); break;
     case 'rmphoto': socket.emit('host:removePhoto', { id: d.id }); break;

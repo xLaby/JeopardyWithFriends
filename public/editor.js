@@ -20,8 +20,23 @@ const safeName = n => {
   const base = slug(i > 0 ? n.slice(0, i) : n), ext = i > 0 ? n.slice(i + 1).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
   return ext ? base + '.' + ext : base;
 };
-const emptyQ = () => ({ frage: '', antwort: '', typ: 'buzzer', einheit: '', zeit: 0, dauer: 20, joker: false, bild: '', sound: '', antwortBild: '' });
-const isEmpty = q => !q.frage && !q.antwort && !q.bild && !q.sound;
+const MINI_T = ['sortieren', 'zuordnen', 'geo'], MAX_ITEMS = 8;
+const emptyItem = () => ({ text: '', bild: '' });
+const emptyQ = () => ({ frage: '', antwort: '', typ: 'buzzer', einheit: '', zeit: 0, dauer: 20, joker: false, bild: '', sound: '', antwortBild: '',
+  items: [], paare: [], anfang: '', ende: '', ziel: { lat: '', lng: '' } });
+const itemFilled = it => !!(it && ((it.text || '').trim() || it.bild));
+const miniFilled = q => MINI_T.includes(q.typ) && ((q.items || []).some(itemFilled) || (q.paare || []).some(p => itemFilled(p.links) || itemFilled(p.rechts)) || !!(q.ziel && q.ziel.lat !== '' && q.ziel.lng !== '' && q.ziel.lat != null));
+const isEmpty = q => !q.frage && !q.antwort && !q.bild && !q.sound && !miniFilled(q);
+// Medien-Pfade einer Frage: bild, sound, antwortBild plus die Bilder der Elemente (items.0.bild, paare.1.links.bild)
+function refPaths(q) {
+  const out = ['bild', 'sound', 'antwortBild'];
+  (q.items || []).forEach((_, i) => out.push('items.' + i + '.bild'));
+  (q.paare || []).forEach((_, i) => out.push('paare.' + i + '.links.bild', 'paare.' + i + '.rechts.bild'));
+  return out;
+}
+const getRef = (q, path) => path.split('.').reduce((o, k) => o == null ? o : o[k], q);
+const setRef = (q, path, v) => { const ks = path.split('.'), last = ks.pop(); ks.reduce((o, k) => o[k], q)[last] = v; };
+const refLabel = path => { const m = /^items\.(\d+)/.exec(path) || /^paare\.(\d+)\.(links|rechts)/.exec(path); return !m ? '' : path.startsWith('items') ? 'Element ' + (+m[1] + 1) : 'Paar ' + (+m[1] + 1) + (m[2] === 'links' ? ' links' : ' rechts'); };
 const rows = () => pkg.werte.length;
 const qAt = (ci, ri) => ci === 'f' ? pkg.finale.fragen[ri] : pkg.kategorien[ci].fragen[ri];
 
@@ -77,14 +92,19 @@ function linkProblem(v, kind) {
   if (!ok.test(ext)) return 'endet nicht auf eine ' + (kind === 'sound' ? 'Audio' : 'Bild') + '-Datei (' + (ext ? '.' + ext : 'keine Endung') + '). Vermutlich eine Seite statt einer Datei – Rechtsklick → „Bildadresse kopieren" nutzen.';
   return '';
 }
+const normItem = it => (typeof it === 'string' || typeof it === 'number') ? { text: s(it, 80), bild: '' } : { text: s(it && it.text, 80), bild: mediaRef(it && it.bild) };
 function normQ(q) {
   q = q || {};
   const t = s(q.typ, 20).toLowerCase().replace('ä', 'ae');
   return {
     frage: s(q.frage), antwort: s(q.antwort),
-    typ: t === 'schaetzen' ? 'schaetzen' : t === 'reveal' ? 'reveal' : 'buzzer',
+    typ: t === 'schaetzen' ? 'schaetzen' : t === 'reveal' ? 'reveal' : t === 'geoguessr' ? 'geo' : MINI_T.includes(t) ? t : 'buzzer',
     einheit: s(q.einheit, 10), zeit: num(q.zeit), dauer: num(q.dauer) || 20, joker: !!q.joker,
-    bild: mediaRef(q.bild), sound: mediaRef(q.sound), antwortBild: mediaRef(q.antwortBild)
+    bild: mediaRef(q.bild), sound: mediaRef(q.sound), antwortBild: mediaRef(q.antwortBild),
+    items: (Array.isArray(q.items) ? q.items : []).slice(0, MAX_ITEMS).map(normItem),
+    paare: (Array.isArray(q.paare) ? q.paare : []).slice(0, MAX_ITEMS).map(p => ({ links: normItem(p && p.links), rechts: normItem(p && p.rechts) })),
+    anfang: s(q.anfang, 30), ende: s(q.ende, 30),
+    ziel: { lat: q.ziel && q.ziel.lat != null && q.ziel.lat !== '' ? Number(q.ziel.lat) : '', lng: q.ziel && q.ziel.lng != null && q.ziel.lng !== '' ? Number(q.ziel.lng) : '' }
   };
 }
 function normPkg(raw) {
@@ -119,6 +139,14 @@ function cleanQ(q, finale) {
   if (!finale && q.typ === 'reveal' && q.dauer) o.dauer = q.dauer;
   if (!finale && q.joker) o.joker = true;
   ['bild', 'sound', 'antwortBild'].forEach(k => { if (q[k]) o[k] = q[k].trim(); });
+  const it = i => { const r = {}; if (i.text.trim()) r.text = i.text.trim(); if (i.bild) r.bild = i.bild.trim(); return r; };
+  if (!finale && q.typ === 'sortieren') {
+    o.items = q.items.filter(itemFilled).map(it);
+    if (q.anfang.trim()) o.anfang = q.anfang.trim();
+    if (q.ende.trim()) o.ende = q.ende.trim();
+  }
+  if (!finale && q.typ === 'zuordnen') o.paare = q.paare.filter(p => itemFilled(p.links) && itemFilled(p.rechts)).map(p => ({ links: it(p.links), rechts: it(p.rechts) }));
+  if (!finale && q.typ === 'geo' && q.ziel.lat !== '' && q.ziel.lng !== '') o.ziel = { lat: Number(q.ziel.lat), lng: Number(q.ziel.lng) };
   return o;
 }
 function cleanPkg() {
@@ -135,14 +163,14 @@ function cleanPkg() {
 }
 function usedMedia(data) {
   const set = new Set();
-  const take = q => ['bild', 'sound', 'antwortBild'].forEach(k => { if (q[k] && !isUrl(q[k])) set.add(q[k]); });
+  const take = q => refPaths(q).forEach(k => { const v = getRef(q, k); if (v && !isUrl(v)) set.add(v); });
   data.kategorien.forEach(c => c.fragen.forEach(take));
   if (data.finale) data.finale.fragen.forEach(take);
   return [...set];
 }
 function allRefs() {   // alle Medien-Referenzen im Modell (auch in leeren Slots)
   const set = new Set();
-  const take = q => ['bild', 'sound', 'antwortBild'].forEach(k => { if (q[k] && !isUrl(q[k])) set.add(q[k]); });
+  const take = q => refPaths(q).forEach(k => { const v = getRef(q, k); if (v && !isUrl(v)) set.add(v); });
   pkg.kategorien.forEach(c => c.fragen.forEach(take));
   pkg.finale.fragen.forEach(take);
   return set;
@@ -169,7 +197,8 @@ function validate() {
       if (ri < last && isEmpty(q)) { add('warn', label + ': leeres Feld mitten im Board.', ci, ri); return; }
       if (ri > last) return;
       if (!q.frage && !q.bild && !q.sound) add('err', label + ': keine Frage.', ci, ri);
-      if (!q.antwort) add('err', label + ': keine Antwort.', ci, ri);
+      if (!q.antwort && !MINI_T.includes(q.typ)) add('err', label + ': keine Antwort.', ci, ri);
+      if (MINI_T.includes(q.typ)) miniChecks(q, label, ci, ri, add);
       if (q.typ === 'schaetzen' && q.antwort && !Number.isFinite(parseNum(q.antwort))) add('err', label + ': Schätzfrage, aber die Antwort ist keine Zahl.', ci, ri);
       if (q.typ === 'reveal' && !q.bild && !q.sound) add('warn', label + ': Reveal ohne Bild/Sound läuft als normale Buzzer-Frage.', ci, ri);
       checkMedia(q, label, ci, ri, add);
@@ -188,9 +217,24 @@ function validate() {
   if (total > MAX_SOFORT) add('err', 'Medien insgesamt ' + fmtSize(total) + ' – ein Sofort-Paket darf höchstens 40 MB haben.');
   return out;
 }
-function checkMedia(q, label, ci, ri, add) {
-  ['bild', 'sound', 'antwortBild'].forEach(k => {
-    const v = q[k]; if (!v) return;
+function miniChecks(q, label, ci, ri, add) {
+  if (q.typ === 'sortieren') {
+    const n = q.items.filter(itemFilled).length;
+    if (n < 2) add('err', label + ': Sortieren braucht mindestens 2 Elemente (richtige Reihenfolge von oben nach unten).', ci, ri);
+  } else if (q.typ === 'zuordnen') {
+    const n = q.paare.filter(p => itemFilled(p.links) && itemFilled(p.rechts)).length;
+    if (n < 2) add('err', label + ': Zuordnen braucht mindestens 2 vollständige Paare.', ci, ri);
+    if (q.paare.some(p => itemFilled(p.links) !== itemFilled(p.rechts))) add('warn', label + ': Ein Paar ist nur halb ausgefüllt und wird weggelassen.', ci, ri);
+  } else if (q.typ === 'geo') {
+    const la = q.ziel.lat, ln = q.ziel.lng;
+    if (la === '' || ln === '' || !(Math.abs(la) <= 90) || !(Math.abs(ln) <= 180)) add('err', label + ': Geoguessr braucht ein gültiges Ziel (Breite −90 bis 90, Länge −180 bis 180). Per „Auf Karte wählen“ setzen.', ci, ri);
+    if (!q.antwort) add('warn', label + ': Kein Ortsname bei „Antwort“ – wird bei der Auflösung angezeigt.', ci, ri);
+  }
+}
+function checkMedia(q, label0, ci, ri, add) {
+  refPaths(q).forEach(k0 => {
+    const v = getRef(q, k0); if (!v) return;
+    const k = k0 === 'sound' ? 'sound' : 'bild', label = refLabel(k0) ? label0 + ' (' + refLabel(k0) + ')' : label0;
     if (isUrl(v)) { const pr = linkProblem(v, k === 'sound' ? 'sound' : 'bild'); if (pr) add('err', label + ': Link ' + pr, ci, ri); return; }
     if (!media.has(v)) add('warn', label + ': Datei „' + v + '" ist nicht geladen. Repo-Paket: muss im media/-Ordner liegen. Sofort-Paket: fehlt.', ci, ri);
     else if (k === 'sound' && media.get(v).size > 3 * 1048576) add('warn', label + ': Sound ist ' + fmtSize(media.get(v).size) + ' – besser kürzen (unter 3 MB).', ci, ri);
@@ -277,19 +321,68 @@ async function addMedia(file, f, ci, ri) {
   media.set(name, blob);
   if (urls.has(name)) { URL.revokeObjectURL(urls.get(name)); urls.delete(name); }
   await idb(() => IDB.put(name, blob));
-  qAt(ci, ri)[f] = name;
+  setRef(qAt(ci, ri), f, name);
   save(); render();
   toast(name + ' hinzugefügt (' + fmtSize(blob.size) + ')');
 }
 function removeRef(f, ci, ri) {
-  const q = qAt(ci, ri), name = q[f];
-  q[f] = '';
+  const q = qAt(ci, ri), name = getRef(q, f);
+  setRef(q, f, '');
   if (name && !isUrl(name) && !allRefs().has(name)) {   // letzte Referenz weg -> Datei weg
     media.delete(name);
     if (urls.has(name)) { URL.revokeObjectURL(urls.get(name)); urls.delete(name); }
     idb(() => IDB.del(name));
   }
   save(); render();
+}
+
+// Datei aus dem Speicher werfen, wenn kein Element sie mehr nutzt
+function dropUnused(name) {
+  if (!name || isUrl(name) || allRefs().has(name)) return;
+  media.delete(name);
+  if (urls.has(name)) { URL.revokeObjectURL(urls.get(name)); urls.delete(name); }
+  idb(() => IDB.del(name));
+}
+// Zielort per Karte waehlen (mit Ortssuche ueber Nominatim, nur auf Knopfdruck)
+function pickGeo(ci, ri) {
+  if (typeof L === 'undefined') return toast('Die Karte konnte nicht geladen werden (Internetverbindung?).', true);
+  const q = qAt(ci, ri);
+  const box = document.createElement('div');
+  box.className = 'geomodal';
+  box.innerHTML = `<div class="geodlg"><div class="row"><input type="text" id="geoq" placeholder="Ort suchen, z. B. Eiffelturm Paris" style="flex:1"><button class="ghost" id="geosearch">Suchen</button></div>
+    <div id="geopick" class="geomap" style="height:min(55vh,460px)"></div>
+    <div class="muted" id="geoinfo">Tippe auf die Karte, um das Ziel zu setzen.</div>
+    <div class="row"><button id="geook" disabled>Übernehmen</button><button class="ghost" id="geocancel">Abbrechen</button></div></div>`;
+  document.body.appendChild(box);
+  let pos = (q.ziel.lat !== '' && q.ziel.lng !== '') ? { lat: Number(q.ziel.lat), lng: Number(q.ziel.lng) } : null;
+  const map = L.map('geopick', { minZoom: 2, maxZoom: 18, maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1 }).setView(pos ? [pos.lat, pos.lng] : [30, 10], pos ? 6 : 2);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, noWrap: true, attribution: '© OpenStreetMap-Mitwirkende' }).addTo(map);
+  let marker = null;
+  const info = document.getElementById('geoinfo'), ok = document.getElementById('geook');
+  const set = (lat, lng) => {
+    pos = { lat: +lat.toFixed(5), lng: +lng.toFixed(5) };
+    if (marker) marker.setLatLng([pos.lat, pos.lng]); else marker = L.marker([pos.lat, pos.lng]).addTo(map);
+    info.textContent = 'Ziel: ' + pos.lat + ', ' + pos.lng; ok.disabled = false;
+  };
+  if (pos) set(pos.lat, pos.lng);
+  map.on('click', e => set(e.latlng.lat, e.latlng.wrap().lng));
+  const close = () => { map.remove(); box.remove(); };
+  document.getElementById('geocancel').onclick = close;
+  box.addEventListener('click', e => { if (e.target === box) close(); });
+  ok.onclick = () => { q.ziel = { lat: pos.lat, lng: pos.lng }; save(); close(); render(); };
+  const search = async () => {
+    const term = document.getElementById('geoq').value.trim(); if (!term) return;
+    info.textContent = 'Suche …';
+    try {
+      const r = await (await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(term), { headers: { 'Accept-Language': 'de' } })).json();
+      if (!r.length) { info.textContent = 'Nichts gefunden. Anderen Suchbegriff probieren oder direkt auf die Karte tippen.'; return; }
+      const lat = Number(r[0].lat), lng = Number(r[0].lon);
+      map.setView([lat, lng], 8); set(lat, lng); info.textContent = (r[0].display_name || '').slice(0, 90) + ' (Pin bei Bedarf verschieben)';
+    } catch (e) { info.textContent = 'Suche nicht möglich. Direkt auf die Karte tippen.'; }
+  };
+  document.getElementById('geosearch').onclick = search;
+  document.getElementById('geoq').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+  setTimeout(() => map.invalidateSize(), 80);
 }
 
 /* ---------- Import / Export ---------- */
@@ -429,6 +522,7 @@ function qCard(ci, ri, q, fin) {
   if (typ === 'schaetzen') extraFields = `<div class="two"><label class="field">Einheit (z. B. €)<input type="text" data-f="einheit" data-ci="${ci}" data-ri="${ri}" maxlength="10" value="${esc(q.einheit)}"></label>
     <label class="field">Schätzzeit in s (leer = Standard)<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label></div>`;
   else if (typ === 'reveal') extraFields = `<label class="field">Dauer in s, in der das Bild scharf wird (Sound: Stufen per Knopf)<input type="text" inputmode="numeric" data-f="dauer" data-ci="${ci}" data-ri="${ri}" value="${q.dauer || 20}"></label>`;
+  else if (MINI_T.includes(typ)) extraFields = `<label class="field">Zeit in s (leer = Standard ${typ === 'geo' ? 45 : 60})<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label>`;
   else if (fin) extraFields = `<label class="field">Antwortzeit in s (leer = Standard)<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label>`;
   return `<div class="qcard ${isEmpty(q) ? 'empty' : ''}" id="q-${ci}-${ri}">
     <div class="qh"><span class="v">${head}</span>
@@ -436,7 +530,10 @@ function qCard(ci, ri, q, fin) {
       <label>Typ <select data-f="typ" data-ci="${ci}" data-ri="${ri}">
         <option value="buzzer" ${typ === 'buzzer' ? 'selected' : ''}>Buzzer</option>
         <option value="schaetzen" ${typ === 'schaetzen' ? 'selected' : ''}>Schätzfrage</option>
-        <option value="reveal" ${typ === 'reveal' ? 'selected' : ''}>Reveal (Bild/Sound wird enthüllt)</option></select></label>
+        <option value="reveal" ${typ === 'reveal' ? 'selected' : ''}>Reveal (Bild/Sound wird enthüllt)</option>
+        <option value="sortieren" ${typ === 'sortieren' ? 'selected' : ''}>Mini-Game: Sortieren</option>
+        <option value="zuordnen" ${typ === 'zuordnen' ? 'selected' : ''}>Mini-Game: Zuordnen</option>
+        <option value="geo" ${typ === 'geo' ? 'selected' : ''}>Mini-Game: Geoguessr (Pin auf Karte)</option></select></label>
       <label><input type="checkbox" data-f="joker" data-ci="${ci}" data-ri="${ri}" ${q.joker ? 'checked' : ''}> festes Joker-Feld</label>`}
     </div>
     <label class="field">Frage${typ === 'reveal' ? ' (wird nach der Freigabe mit dem Medium gezeigt)' : ''}<textarea data-f="frage" data-ci="${ci}" data-ri="${ri}" maxlength="1000">${esc(q.frage)}</textarea></label>
@@ -444,8 +541,46 @@ function qCard(ci, ri, q, fin) {
       <label class="field">Antwort${typ === 'schaetzen' ? ' (Zahl, z. B. 1,19 oder 1200)' : ''}<input type="text" data-f="antwort" data-ci="${ci}" data-ri="${ri}" maxlength="1000" value="${esc(q.antwort)}"></label>
       ${extraFields}
     </div>
-    <div class="media">${mediaBox(ci, ri, 'bild', 'Bild', q.bild)}${mediaBox(ci, ri, 'sound', 'Sound', q.sound)}${mediaBox(ci, ri, 'antwortBild', 'Bild bei der Auflösung', q.antwortBild)}</div>
+    ${miniEditor(ci, ri, q, typ)}
+    <div class="media">${mediaBox(ci, ri, 'bild', typ === 'geo' ? 'Bild (z. B. Foto des gesuchten Ortes)' : 'Bild', q.bild)}${MINI_T.includes(typ) ? '' : mediaBox(ci, ri, 'sound', 'Sound', q.sound)}${mediaBox(ci, ri, 'antwortBild', 'Bild bei der Auflösung', q.antwortBild)}</div>
   </div>`;
+}
+// Kleines Bildfeld fuer ein Element (Sortieren/Zuordnen)
+function itemMedia(ci, ri, path, val) {
+  const has = !!val && media.has(val), url = isUrl(val), src = has ? objUrl(val) : url ? val : '';
+  const pr = url ? linkProblem(val, 'bild') : '';
+  return `<span class="imedia">${src && !pr ? `<img class="ithumb" src="${esc(src)}" alt="" onerror="this.remove()">` : ''}
+    <input type="text" class="ilink" data-mu="${path}" data-ci="${ci}" data-ri="${ri}" placeholder="Bild (optional): Datei oder https-Link" value="${esc(val || '')}">
+    <label class="filebtn">📷<input type="file" hidden accept="image/*" data-mf="${path}" data-ci="${ci}" data-ri="${ri}"></label>
+    ${val ? `<button class="ghost sm" data-mdel="${path}" data-ci="${ci}" data-ri="${ri}" title="Bild entfernen">✕</button>` : ''}
+    ${pr ? `<span class="miss">Link ${esc(pr)}</span>` : (val && !has && !url ? '<span class="miss">Datei nicht geladen</span>' : '')}</span>`;
+}
+function miniEditor(ci, ri, q, typ) {
+  const at = `data-ci="${ci}" data-ri="${ri}"`;
+  if (typ === 'sortieren') {
+    return `<div class="minied"><div class="muted">Elemente in der <b>richtigen Reihenfolge</b> eintragen (oben beginnt die Lösung). Die Spieler sehen sie gemischt. Text, Bild oder beides.</div>
+      <div class="two"><label class="field">Beschriftung oben (z. B. älteste zuerst)<input type="text" data-ip="anfang" ${at} maxlength="30" value="${esc(q.anfang)}"></label>
+      <label class="field">Beschriftung unten (z. B. jüngste)<input type="text" data-ip="ende" ${at} maxlength="30" value="${esc(q.ende)}"></label></div>
+      ${q.items.map((it, i) => `<div class="irow"><span class="inum">${i + 1}</span><input type="text" data-ip="items.${i}.text" ${at} maxlength="80" placeholder="Begriff" value="${esc(it.text)}">${itemMedia(ci, ri, 'items.' + i + '.bild', it.bild)}
+        <span class="ibtns"><button class="ghost sm" data-act="itemmove" ${at} data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''}>▲</button><button class="ghost sm" data-act="itemmove" ${at} data-i="${i}" data-d="1" ${i === q.items.length - 1 ? 'disabled' : ''}>▼</button><button class="ghost sm" data-act="itemdel" ${at} data-i="${i}">✕</button></span></div>`).join('')}
+      <button class="ghost sm" data-act="itemadd" ${at} ${q.items.length >= MAX_ITEMS ? 'disabled' : ''}>+ Element (max. ${MAX_ITEMS})</button></div>`;
+  }
+  if (typ === 'zuordnen') {
+    return `<div class="minied"><div class="muted">Zusammengehörige Paare eintragen. Links bleibt in dieser Reihenfolge, die rechte Seite wird gemischt. Text, Bild oder beides.</div>
+      ${q.paare.map((p, i) => `<div class="irow pair"><span class="inum">${i + 1}</span>
+        <div class="pside"><input type="text" data-ip="paare.${i}.links.text" ${at} maxlength="80" placeholder="Links (z. B. Frankreich)" value="${esc(p.links.text)}">${itemMedia(ci, ri, 'paare.' + i + '.links.bild', p.links.bild)}</div>
+        <b>→</b>
+        <div class="pside"><input type="text" data-ip="paare.${i}.rechts.text" ${at} maxlength="80" placeholder="Rechts (z. B. Paris)" value="${esc(p.rechts.text)}">${itemMedia(ci, ri, 'paare.' + i + '.rechts.bild', p.rechts.bild)}</div>
+        <span class="ibtns"><button class="ghost sm" data-act="pairdel" ${at} data-i="${i}">✕</button></span></div>`).join('')}
+      <button class="ghost sm" data-act="pairadd" ${at} ${q.paare.length >= MAX_ITEMS ? 'disabled' : ''}>+ Paar (max. ${MAX_ITEMS})</button></div>`;
+  }
+  if (typ === 'geo') {
+    return `<div class="minied"><div class="muted">Die Spieler setzen einen Pin auf einer Weltkarte (ohne Beschriftungen). Wer am nächsten dran ist, gewinnt. Bei „Antwort“ den Ortsnamen eintragen, er wird bei der Auflösung gezeigt.</div>
+      <div class="row"><label class="field" style="flex:1">Breitengrad<input type="text" inputmode="decimal" data-ip="ziel.lat" ${at} value="${q.ziel.lat}" placeholder="z. B. 48.8584"></label>
+      <label class="field" style="flex:1">Längengrad<input type="text" inputmode="decimal" data-ip="ziel.lng" ${at} value="${q.ziel.lng}" placeholder="z. B. 2.2945"></label>
+      <button class="ghost" data-act="pickgeo" ${at} style="align-self:flex-end">🗺️ Auf Karte wählen</button></div></div>`;
+  }
+  return '';
 }
 function mediaBox(ci, ri, f, label, val) {
   const has = !!val && media.has(val), url = isUrl(val);
@@ -480,11 +615,17 @@ document.addEventListener('input', e => {
   } else if (el.dataset.p === 'titel') { pkg.titel = el.value; save(); }
   else if (el.dataset.c === 'name') { pkg.kategorien[sel].name = el.value; save(); refreshChecks(); }
   else if (el.dataset.c === 'finname') { pkg.finale.name = el.value; save(); }
-  else if (el.dataset.mu !== undefined) { qAt(ciOf(el), +el.dataset.ri)[el.dataset.mu] = el.value.trim(); save(); refreshChecks(); }
+  else if (el.dataset.mu !== undefined) { setRef(qAt(ciOf(el), +el.dataset.ri), el.dataset.mu, el.value.trim()); save(); refreshChecks(); }
+  else if (el.dataset.ip !== undefined) { const q = qAt(ciOf(el), +el.dataset.ri), p = el.dataset.ip; setRef(q, p, /^ziel\./.test(p) ? (el.value.trim() === '' || isNaN(Number(el.value.replace(',', '.'))) ? '' : Number(el.value.replace(',', '.'))) : el.value); save(); refreshChecks(); }
 });
 document.addEventListener('change', e => {
   const el = e.target;
-  if (el.dataset.f === 'typ') { qAt(ciOf(el), +el.dataset.ri).typ = el.value; save(); render(); }
+  if (el.dataset.f === 'typ') {
+    const q = qAt(ciOf(el), +el.dataset.ri); q.typ = el.value;
+    if (q.typ === 'sortieren') while (q.items.length < 3) q.items.push(emptyItem());
+    if (q.typ === 'zuordnen') while (q.paare.length < 3) q.paare.push({ links: emptyItem(), rechts: emptyItem() });
+    save(); render();
+  }
   else if (el.dataset.f === 'joker') { qAt(ciOf(el), +el.dataset.ri).joker = el.checked; save(); refreshChecks(); }
   else if (el.dataset.mf !== undefined) { const file = el.files[0]; if (file) addMedia(file, el.dataset.mf, ciOf(el), +el.dataset.ri); el.value = ''; }
   else if (el.dataset.mu !== undefined) render();
@@ -503,6 +644,12 @@ document.addEventListener('click', e => {
   const d = el.dataset;
   if (d.mdel !== undefined) return removeRef(d.mdel, ciOf(el), +d.ri);
   switch (d.act) {
+    case 'itemadd': { const q = qAt(ciOf(el), +d.ri); if (q.items.length < MAX_ITEMS) q.items.push(emptyItem()); save(); render(); break; }
+    case 'itemdel': { const q = qAt(ciOf(el), +d.ri), i = +d.i, name = q.items[i].bild; q.items.splice(i, 1); dropUnused(name); save(); render(); break; }
+    case 'itemmove': { const q = qAt(ciOf(el), +d.ri), i = +d.i, j = i + +d.d; if (j < 0 || j >= q.items.length) break; [q.items[i], q.items[j]] = [q.items[j], q.items[i]]; save(); render(); break; }
+    case 'pairadd': { const q = qAt(ciOf(el), +d.ri); if (q.paare.length < MAX_ITEMS) q.paare.push({ links: emptyItem(), rechts: emptyItem() }); save(); render(); break; }
+    case 'pairdel': { const q = qAt(ciOf(el), +d.ri), i = +d.i, p = q.paare[i]; q.paare.splice(i, 1); dropUnused(p.links.bild); dropUnused(p.rechts.bild); save(); render(); break; }
+    case 'pickgeo': pickGeo(ciOf(el), +d.ri); break;
     case 'selcat': sel = +d.i; render(); break;
     case 'selfin': sel = 'f'; render(); break;
     case 'addcat': if (pkg.kategorien.length < MAX_CATS) { pkg.kategorien.push(newCat(pkg.kategorien.length + 1, rows())); sel = pkg.kategorien.length - 1; save(); render(); } break;

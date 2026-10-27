@@ -1,0 +1,170 @@
+{
+  "titel": "Mini-Game-Test",
+  "werte": [
+    100,
+    200,
+    300
+  ],
+  "kategorien": [
+    {
+      "name": "Sortieren",
+      "fragen": [
+        {
+          "typ": "sortieren",
+          "frage": "Sortiere die Planeten nach Abstand zur Sonne.",
+          "items": [
+            "Merkur",
+            "Venus",
+            "Erde",
+            "Mars",
+            "Jupiter",
+            "Saturn"
+          ],
+          "anfang": "nah an der Sonne",
+          "ende": "weit weg",
+          "zeit": 60
+        },
+        {
+          "typ": "sortieren",
+          "frage": "Sortiere die Städte nach Einwohnerzahl.",
+          "items": [
+            "Berlin",
+            "Hamburg",
+            "München",
+            "Köln",
+            "Frankfurt"
+          ],
+          "anfang": "größte zuerst",
+          "ende": "kleinste",
+          "zeit": 45
+        },
+        {
+          "typ": "sortieren",
+          "frage": "Sortiere die Erfindungen nach Alter.",
+          "items": [
+            "Buchdruck",
+            "Dampfmaschine",
+            "Telefon",
+            "Glühbirne",
+            "Computer (Z3)",
+            "World Wide Web"
+          ],
+          "anfang": "älteste",
+          "ende": "neueste",
+          "zeit": 60,
+          "joker": true
+        }
+      ]
+    },
+    {
+      "name": "Zuordnen",
+      "fragen": [
+        {
+          "typ": "zuordnen",
+          "frage": "Welche Hauptstadt gehört zu welchem Land?",
+          "paare": [
+            {
+              "links": "Deutschland",
+              "rechts": "Berlin"
+            },
+            {
+              "links": "Frankreich",
+              "rechts": "Paris"
+            },
+            {
+              "links": "Italien",
+              "rechts": "Rom"
+            },
+            {
+              "links": "Spanien",
+              "rechts": "Madrid"
+            }
+          ],
+          "zeit": 45
+        },
+        {
+          "typ": "zuordnen",
+          "frage": "Wer hat was erfunden?",
+          "paare": [
+            {
+              "links": "Gutenberg",
+              "rechts": "Buchdruck"
+            },
+            {
+              "links": "Bell",
+              "rechts": "Telefon"
+            },
+            {
+              "links": "Benz",
+              "rechts": "Automobil"
+            },
+            {
+              "links": "Zuse",
+              "rechts": "Computer"
+            },
+            {
+              "links": "Röntgen",
+              "rechts": "Röntgenstrahlen"
+            }
+          ],
+          "zeit": 60
+        },
+        {
+          "typ": "zuordnen",
+          "frage": "Was ist die Hauptzutat?",
+          "paare": [
+            {
+              "links": "Guacamole",
+              "rechts": "Avocado"
+            },
+            {
+              "links": "Hummus",
+              "rechts": "Kichererbsen"
+            },
+            {
+              "links": "Marzipan",
+              "rechts": "Mandeln"
+            }
+          ],
+          "zeit": 40
+        }
+      ]
+    },
+    {
+      "name": "Geoguessr",
+      "fragen": [
+        {
+          "typ": "geo",
+          "frage": "Wo steht der Eiffelturm?",
+          "antwort": "Paris, Frankreich",
+          "ziel": {
+            "lat": 48.8584,
+            "lng": 2.2945
+          },
+          "zeit": 30
+        },
+        {
+          "typ": "geo",
+          "frage": "Wo steht die Oper mit den berühmten Segeldächern?",
+          "antwort": "Sydney, Australien",
+          "ziel": {
+            "lat": -33.8568,
+            "lng": 151.2153
+          },
+          "zeit": 40
+        },
+        {
+          "typ": "geo",
+          "frage": "Wo liegt die Inkastadt Machu Picchu?",
+          "antwort": "Peru",
+          "ziel": {
+            "lat": -13.1631,
+            "lng": -72.545
+          },
+          "zeit": 45,
+          "joker": true
+        }
+      ]
+    }
+  ]
+}
