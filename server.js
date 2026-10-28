@@ -15,9 +15,10 @@ const JOKERS = ['double', 'coffee', 'risk'];
 const MAX_JOKERS = 3;          // je Joker-Art nur einer pro Spieler, damit maximal 3
 const MINI = ['sortieren', 'zuordnen', 'geo'];        // Mini-Games: alle spielen gleichzeitig, Punkte nach Rang
 const isMini = t => MINI.includes(t);
-const MINI_TIME = { sortieren: 60, zuordnen: 60, geo: 45 };   // Standardzeit in Sekunden
+const MINI_TIME = { sortieren: 25, zuordnen: 60, geo: 45 };   // Standardzeit in Sekunden (Sortieren: pro Zug)
+const SORT_HEARTS = 3;         // Herzen pro Spieler beim Sortieren (pro Frage mit "herzen" aenderbar)
 const RANK_FACTOR = [1, 0.75, 0.5, 0.25];                // Anteil des Feldwerts fuer Platz 1, 2, 3, 4 (danach 0)
-const MAX_ITEMS = 8;
+const MAX_ITEMS = 10;
 const DELAYS = [1, 2, 3, 5];   // Handicap: Buzzer-Verzoegerung in Sekunden (0 = aus)
 const THEMES = [               // komplette Designs (Schrift, Formen, Hintergrund, Board- und Buzzer-Layout); c = Vorschaufarben
   { id: 'classic', name: 'Showbühne', d: 'Vorhang, Scheinwerfer, Lichterrahmen, runder Buzzer', c: ['#12081a', '#6b0f24', '#f5b92e'] },
@@ -90,7 +91,7 @@ app.post('/upload', express.json({ limit: '56mb' }), (req, res) => {
     };
     const walk = f => {
       if (!f || typeof f !== 'object') return;
-      ['bild', 'sound', 'antwortBild'].forEach(k => { if (f[k]) f[k] = fix(f[k]); });
+      ['bild', 'sound', 'antwortBild', 'karte'].forEach(k => { if (f[k]) f[k] = fix(f[k]); });
       const fixItem = it => { if (it && typeof it === 'object' && it.bild) it.bild = fix(it.bild); };
       if (Array.isArray(f.items)) f.items.forEach(fixItem);
       if (Array.isArray(f.paare)) f.paare.forEach(p => { if (p) { fixItem(p.links); fixItem(p.rechts); } });
@@ -128,7 +129,7 @@ app.post('/restore', express.json({ limit: '56mb' }), (req, res) => {
     restored.hostSocket = null;
     if (restored.code !== oldCode) {
       const fix = v => typeof v === 'string' ? v.replace('/blob/' + oldCode + '/', '/blob/' + restored.code + '/') : v;
-      const walk = f => ['bild', 'sound', 'antwortBild'].forEach(k => { if (f[k]) f[k] = fix(f[k]); });
+      const walk = f => ['bild', 'sound', 'antwortBild', 'karte'].forEach(k => { if (f[k]) f[k] = fix(f[k]); });
       restored.data.kategorien.forEach(c => c.fragen.forEach(walk));
       if (restored.data.finale) restored.data.finale.fragen.forEach(walk);
     }
@@ -184,8 +185,8 @@ function parseNum(v) {
 
 const itemOf = v => {
   if (v == null) return null;
-  if (typeof v === 'string' || typeof v === 'number') { const t = str(v, 80); return t ? { text: t, bild: '' } : null; }
-  const o = { text: str(v.text, 80), bild: mediaPath(v.bild) };
+  if (typeof v === 'string' || typeof v === 'number') { const t = str(v, 80); return t ? { text: t, bild: '', info: '', start: false } : null; }
+  const o = { text: str(v.text, 80), bild: mediaPath(v.bild), info: str(v.info, 40), start: !!v.start };
   return o.text || o.bild ? o : null;
 };
 const coord = v => (v === null || v === undefined || v === '') ? NaN : Number(v);
@@ -195,7 +196,7 @@ function normQuestion(f, finale) {
   const zeit = Math.round(Number(f.zeit)), dauer = Math.round(Number(f.dauer));
   const q = {
     frage: str(f.frage), antwort: str(f.antwort),
-    bild: mediaPath(f.bild), sound: mediaPath(f.sound), antwortBild: mediaPath(f.antwortBild),
+    bild: mediaPath(f.bild), sound: mediaPath(f.sound), antwortBild: mediaPath(f.antwortBild), karte: mediaPath(f.karte),
     joker: !!f.joker,
     typ: finale ? 'finale' : t === 'schaetzen' ? 'schaetzen' : t === 'reveal' ? 'reveal' : 'buzzer',
     zeit: Number.isFinite(zeit) && zeit > 0 ? Math.min(zeit, 600) : 0,
@@ -205,13 +206,17 @@ function normQuestion(f, finale) {
   if (!finale) {
     if (t === 'sortieren') {
       const items = (Array.isArray(f.items) ? f.items : []).map(itemOf).filter(Boolean).slice(0, MAX_ITEMS);
-      if (items.length >= 2) Object.assign(q, { typ: 'sortieren', items, anfang: str(f.anfang, 30), ende: str(f.ende, 30) });
+      const hz = Math.round(Number(f.herzen));
+      if (items.length >= 2) Object.assign(q, { typ: 'sortieren', items, anfang: str(f.anfang, 30), ende: str(f.ende, 30),
+        abwaerts: !!f.abwaerts, herzen: Number.isFinite(hz) && hz >= 1 ? Math.min(hz, 5) : SORT_HEARTS });
     } else if (t === 'zuordnen') {
       const paare = (Array.isArray(f.paare) ? f.paare : []).map(p => { const l = itemOf(p && p.links), r = itemOf(p && p.rechts); return l && r ? { links: l, rechts: r } : null; }).filter(Boolean).slice(0, MAX_ITEMS);
       if (paare.length >= 2) Object.assign(q, { typ: 'zuordnen', paare });
     } else if (t === 'geo' || t === 'geoguessr') {
-      const lat = coord(f.ziel && f.ziel.lat), lng = coord(f.ziel && f.ziel.lng);
-      if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) Object.assign(q, { typ: 'geo', ziel: { lat, lng } });
+      // Kartenbild: Ziel als Anteil der Bildbreite/-hoehe (0 bis 1, von links oben); aspekt = Breite / Hoehe des Bildes
+      const x = coord(f.ziel && f.ziel.x), y = coord(f.ziel && f.ziel.y), asp = Number(f.aspekt);
+      if (q.karte && Number.isFinite(x) && Number.isFinite(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1)
+        Object.assign(q, { typ: 'geo', ziel: { x, y }, aspekt: Number.isFinite(asp) && asp >= 0.2 && asp <= 5 ? asp : 1 });
     }
     if (isMini(q.typ) && !q.zeit) q.zeit = MINI_TIME[q.typ];
   }
@@ -304,6 +309,7 @@ function restore(room, snap) {
   const c = snap.current ? structuredClone(snap.current) : null;
   if (c) { c.t = {}; c.window = null; c.deadline = 0; c.timeUp = false; c.audio = { ...c.audio, on: false }; }
   room.current = c;
+  if (c && c.typ === 'sortieren' && c.state === 'open' && c.mini && c.mini.sort && c.mini.sort.turn) sortStartTurn(room, c);   // Rueckgaengig: Zugzeit neu starten
   room.undo = null;
 }
 
@@ -415,19 +421,11 @@ function toReveal(room, cur, result) {
 // Punkte nach Rang: Platz 1 bekommt den vollen Feldwert, Platz 2 75 %, Platz 3 50 %, Platz 4 25 %.
 const rid = () => crypto.randomBytes(4).toString('hex');
 function shuffle(a) { const r = [...a]; for (let i = r.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [r[i], r[j]] = [r[j], r[i]]; } return r; }
-function distKm(a, b) {
-  const rad = d => d * Math.PI / 180, dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
-}
 function startMini(room, cur) {
   const q = curQ(room, cur);
   const m = { answers: {}, result: null, items: null, left: null, right: null, truth: null };
   if (cur.typ === 'sortieren') {
-    const items = q.items.map(it => ({ id: rid(), text: it.text, bild: it.bild }));   // Reihenfolge hier = Loesung; ids verraten nichts
-    m.truth = items.map(i => i.id);
-    let disp; do { disp = shuffle(items); } while (disp.length > 1 && disp.every((it, i) => it.id === m.truth[i]));
-    m.items = disp;
+    return startSort(room, cur, q);
   } else if (cur.typ === 'zuordnen') {
     const L = q.paare.map(p => ({ id: rid(), text: p.links.text, bild: p.links.bild }));
     const R = q.paare.map(p => ({ id: rid(), text: p.rechts.text, bild: p.rechts.bild }));
@@ -453,10 +451,11 @@ function cleanMini(cur, ans) {
     for (const [k, v] of Object.entries(ans)) { if (L.has(k) && R.has(v) && !used.has(v)) { used.add(v); out[k] = v; } }
     return out;
   }
-  const lat = coord(ans && ans.lat), lng = coord(ans && ans.lng);
-  return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+  const x = coord(ans && ans.x), y = coord(ans && ans.y);   // Pin auf dem Kartenbild: Anteil von Breite und Hoehe
+  return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1 ? { x, y } : null;
 }
 function finishMini(room, cur) {
+  if (cur.typ === 'sortieren') return finishSort(room, cur);
   if (cur.state !== 'open' || !cur.mini) return;
   room.undo = snapshot(room, 'Auswertung des Mini-Games');
   clearTimers(cur);
@@ -466,17 +465,13 @@ function finishMini(room, cur) {
     if (!player(room, pid) || cur.locked.has(pid)) return;
     const t = a.done ? a.at : total;
     let r;
-    if (cur.typ === 'sortieren') {
-      const ok = a.ans.filter((id, i) => id === m.truth[i]).length, pos = Object.fromEntries(a.ans.map((id, i) => [id, i]));
-      let pairs = 0;
-      for (let i = 0; i < m.truth.length; i++) for (let j = i + 1; j < m.truth.length; j++) if (pos[m.truth[i]] < pos[m.truth[j]]) pairs++;
-      r = { key: [-ok, -pairs, t], valid: ok > 0, detail: ok + ' von ' + m.truth.length + ' richtig platziert' };
-    } else if (cur.typ === 'zuordnen') {
+    if (cur.typ === 'zuordnen') {
       const ok = Object.entries(a.ans).filter(([l, rr]) => m.truth[l] === rr).length;
       r = { key: [-ok, t], valid: ok > 0, detail: ok + ' von ' + m.left.length + ' richtig zugeordnet' };
     } else {
-      const km = distKm(a.ans, q.ziel);
-      r = { key: [km, t], valid: true, km, pin: a.ans, detail: km < 10 ? 'nur ' + km.toFixed(1).replace('.', ',') + ' km daneben' : Math.round(km).toLocaleString('de-DE') + ' km entfernt' };
+      // Abstand auf dem Kartenbild als Anteil der Bilddiagonale (0 = genau getroffen)
+      const asp = q.aspekt || 1, d = Math.hypot((a.ans.x - q.ziel.x) * asp, a.ans.y - q.ziel.y) / Math.hypot(asp, 1);
+      r = { key: [d, t], valid: true, dist: d, pin: a.ans, detail: 'Abstand ' + (d * 100).toFixed(1).replace('.', ',') + ' % der Kartendiagonale' };
     }
     rows.push({ pid, ms: t, ...r });
   });
@@ -496,10 +491,9 @@ function finishMini(room, cur) {
   const pubItem = it => ({ id: it.id, text: it.text, bild: it.bild });
   const byId = (list, id) => list.find(x => x.id === id);
   m.result = {
-    ranking: rows.map(r => ({ pid: r.pid, rank: r.rank, factor: r.factor, detail: r.detail, ms: r.ms, km: r.km == null ? null : r.km, pin: r.pin || null })),
-    truth: cur.typ === 'sortieren' ? m.truth.map(id => pubItem(byId(m.items, id)))
-      : cur.typ === 'zuordnen' ? m.left.map(l => ({ lid: l.id, rid: m.truth[l.id], links: pubItem(l), rechts: pubItem(byId(m.right, m.truth[l.id])) }))
-      : { lat: q.ziel.lat, lng: q.ziel.lng }
+    ranking: rows.map(r => ({ pid: r.pid, rank: r.rank, factor: r.factor, detail: r.detail, ms: r.ms, dist: r.dist == null ? null : r.dist, pin: r.pin || null })),
+    truth: cur.typ === 'zuordnen' ? m.left.map(l => ({ lid: l.id, rid: m.truth[l.id], links: pubItem(l), rechts: pubItem(byId(m.right, m.truth[l.id])) }))
+      : { x: q.ziel.x, y: q.ziel.y }
   };
   toReveal(room, cur, cur.winners.length ? 'correct' : 'none');
   grantReward(room, cur);
@@ -508,19 +502,102 @@ function finishMini(room, cur) {
 function miniView(room, cur, forHost, pid) {
   const m = cur.mini, q = curQ(room, cur);
   const v = { kind: cur.typ, answered: m ? Object.keys(m.answers) : [], submitted: m ? Object.keys(m.answers).filter(id => m.answers[id].done) : [] };
-  if (cur.typ === 'sortieren') { v.anfang = q.anfang; v.ende = q.ende; }
+  if (cur.typ === 'sortieren') { v.anfang = q.anfang; v.ende = q.ende; v.abwaerts = !!q.abwaerts; }
+  if (cur.typ === 'geo' && (forHost || (m && cur.state !== 'reading'))) v.karte = q.karte;
   if (m && cur.state !== 'reading') {
-    if (cur.typ === 'sortieren') v.items = m.items.map(({ id, text, bild }) => ({ id, text, bild }));
+    if (m.sort) {
+      const so = m.sort, byId = id => so.items.find(i => i.id === id);
+      const pub = (it, info) => ({ id: it.id, text: it.text, bild: it.bild, info: info ? it.info : '' });
+      v.sort = { n: so.truth.length, placed: so.placed.map(id => id ? pub(byId(id), true) : null),
+        pool: so.display.filter(id => !so.placed.includes(id)).map(id => pub(byId(id), false)),
+        order: so.order, hearts: so.hearts, correct: so.correct, maxHearts: so.maxHearts, turn: so.turn, last: so.last, start: so.start };
+    }
     if (cur.typ === 'zuordnen') { v.left = m.left.map(({ id, text, bild }) => ({ id, text, bild })); v.right = m.right.map(({ id, text, bild }) => ({ id, text, bild })); }
   }
   if (m && pid && m.answers[pid]) v.mine = { ans: m.answers[pid].ans, done: !!m.answers[pid].done };
   if (m && cur.state === 'reveal' && m.result) v.result = m.result;
   if (forHost && cur.state !== 'reveal') {
-    if (cur.typ === 'sortieren') v.hostTruth = q.items.map(it => ({ text: it.text, bild: it.bild }));
+    if (cur.typ === 'sortieren') v.hostTruth = q.items.map(it => ({ text: it.text, bild: it.bild, info: it.info }));
     if (cur.typ === 'zuordnen') v.hostTruth = q.paare.map(p => ({ links: p.links, rechts: p.rechts }));
-    if (cur.typ === 'geo') v.hostTruth = { lat: q.ziel.lat, lng: q.ziel.lng };
+    if (cur.typ === 'geo') v.hostTruth = { x: q.ziel.x, y: q.ziel.y };
   }
   return v;
+}
+// ---------- Sortieren (rundenbasiert) ----------
+// Gemeinsames Brett mit festen Plaetzen, die Spieler sind reihum dran: ein Gegenstand aus dem Pool auf einen Platz setzen.
+// Richtig = bleibt liegen. Falsch (oder Zeit ab) = ein Herz weg, der Gegenstand bleibt im Pool. Wer am Ende die meisten Herzen hat, gewinnt.
+// Ein Gegenstand liegt von Anfang an richtig auf dem Brett (sein Zusatzwert ist sichtbar). Der Wert wird erst nach dem richtigen Platzieren gezeigt.
+function startSort(room, cur, q) {
+  const items = q.items.map(it => ({ id: rid(), text: it.text, bild: it.bild, info: it.info, start: it.start }));
+  const truth = items.map(i => i.id);
+  let si = items.findIndex(i => i.start);
+  if (si < 0) si = items.length > 2 ? 1 + crypto.randomInt(items.length - 2) : crypto.randomInt(items.length);
+  const placed = items.map((it, i) => i === si ? it.id : null);
+  const display = shuffle(truth);
+  const ps = room.players.filter(p => p.connected && !cur.locked.has(p.id));
+  const at = Math.max(0, ps.findIndex(p => p.id === room.picker));
+  const order = ps.map((_, i) => ps[(at + i) % ps.length].id);   // wer das Feld gewaehlt hat, faengt an
+  const hearts = {}, correct = {}, maxHearts = q.herzen || SORT_HEARTS;
+  order.forEach(id => { hearts[id] = maxHearts; correct[id] = 0; });
+  cur.mini = { answers: {}, result: null, items: null, left: null, right: null, truth: null,
+    sort: { items, truth, placed, display, order, hearts, correct, maxHearts, turn: null, last: null, n: 0, start: si } };
+  sortAdvance(room, cur);
+}
+function sortStartTurn(room, cur) {
+  clearTimeout(cur.t.turn);
+  const ms = (curQ(room, cur).zeit || MINI_TIME.sortieren) * 1000;
+  cur.deadline = Date.now() + ms;
+  cur.t.turn = setTimeout(() => {
+    if (room.current !== cur || cur.state !== 'open' || !cur.mini || !cur.mini.sort) return;
+    sortTimeout(room, cur); emitState(room);
+  }, ms);
+}
+// Naechster Spieler (mit Herzen und verbunden) oder Ende: Brett voll, niemand mehr uebrig oder nur noch einer mit Herzen
+function sortAdvance(room, cur) {
+  const s = cur.mini.sort;
+  clearTimeout(cur.t.turn); cur.deadline = 0;
+  const alive = s.order.filter(id => s.hearts[id] > 0);
+  if (s.placed.every(Boolean) || !alive.length || (s.order.length > 1 && alive.length <= 1)) return finishSort(room, cur);
+  const i = s.order.indexOf(s.turn), n = s.order.length;
+  for (let k = 1; k <= n; k++) {
+    const id = s.order[(i + k + n) % n], p = player(room, id);
+    if (s.hearts[id] > 0 && p && p.connected) { s.turn = id; return sortStartTurn(room, cur); }
+  }
+  s.turn = null;   // niemand verbunden: der Spielleiter beendet das Spiel oder wartet
+}
+function sortMove(room, cur, pid, itemId, slot) {
+  const s = cur.mini.sort;
+  clearTimeout(cur.t.turn);
+  const ok = s.truth[slot] === itemId;
+  if (ok) { s.placed[slot] = itemId; s.correct[pid]++; } else s.hearts[pid]--;
+  s.last = { n: ++s.n, pid, item: itemId, slot, ok };
+  sortAdvance(room, cur);
+}
+function sortTimeout(room, cur) {
+  const s = cur.mini.sort;
+  if (s.turn) { s.hearts[s.turn]--; s.last = { n: ++s.n, pid: s.turn, item: null, slot: null, ok: false, timeout: true }; }
+  sortAdvance(room, cur);
+}
+function finishSort(room, cur) {
+  if (cur.state !== 'open' || !cur.mini || !cur.mini.sort) return;
+  room.undo = snapshot(room, 'Auswertung des Mini-Games');
+  clearTimers(cur);
+  const s = cur.mini.sort, value = V(room)[cur.row];
+  const rows = s.order.filter(id => player(room, id)).map(pid => ({ pid, hearts: s.hearts[pid], ok: s.correct[pid] }));
+  rows.sort((x, y) => (y.hearts - x.hearts) || (y.ok - x.ok));   // meiste Herzen, bei Gleichstand mehr richtig gesetzte
+  rows.forEach((r, i) => { r.rank = i === 0 || r.hearts !== rows[i - 1].hearts || r.ok !== rows[i - 1].ok ? i + 1 : rows[i - 1].rank; });
+  rows.forEach(r => { r.win = r.rank === 1 && r.hearts > 0; });   // nur der Beste bekommt den vollen Feldwert (bei exaktem Gleichstand alle)
+  rows.forEach(r => { if (r.win) award(room, cur, r.pid, Math.round(value * winMult(cur, r.pid)), 'rank'); });
+  cur.winners = rows.filter(r => r.win).map(r => r.pid);
+  cur.winners.forEach(id => { const p = player(room, id); if (p) p.stats.miniWins = (p.stats.miniWins || 0) + 1; });
+  const pub = it => ({ id: it.id, text: it.text, bild: it.bild, info: it.info });
+  cur.mini.result = {
+    ranking: rows.map(r => ({ pid: r.pid, rank: r.rank, factor: r.win ? 1 : 0, ms: null, dist: null, pin: null,
+      detail: r.hearts + (r.hearts === 1 ? ' Herz' : ' Herzen') + ' übrig, ' + r.ok + ' richtig gesetzt' })),
+    truth: s.truth.map(id => pub(s.items.find(i => i.id === id)))
+  };
+  toReveal(room, cur, cur.winners.length ? 'correct' : 'none');
+  grantReward(room, cur);
 }
 function startTile(room, cat, row) {
   if (room.phase !== 'game' || room.current) return;
@@ -938,7 +1015,7 @@ io.on('connection', sock => {
   sock.on('player:mini', ({ ans, done } = {}) => {
     const room = playerRoom();
     const cur = room && room.current;
-    if (!cur || !isMini(cur.typ) || cur.state !== 'open' || !cur.mini) return;
+    if (!cur || !isMini(cur.typ) || cur.typ === 'sortieren' || cur.state !== 'open' || !cur.mini) return;
     const pid = sock.data.pid;
     if (!player(room, pid) || cur.locked.has(pid)) return;
     const prev = cur.mini.answers[pid];
@@ -950,6 +1027,27 @@ io.on('connection', sock => {
       const active = room.players.filter(x => x.connected && !cur.locked.has(x.id));
       if (active.length && active.every(x => cur.mini.answers[x.id] && cur.mini.answers[x.id].done)) finishMini(room, cur);   // alle fertig: sofort auswerten
     }
+    emitState(room);
+  });
+  // Sortieren: ein Gegenstand aus dem Pool auf einen freien Platz, nur wer dran ist
+  sock.on('player:sortPlace', ({ item, slot } = {}) => {
+    const room = playerRoom();
+    const cur = room && room.current;
+    if (!cur || cur.typ !== 'sortieren' || cur.state !== 'open' || !cur.mini || !cur.mini.sort) return;
+    const s = cur.mini.sort, pid = sock.data.pid;
+    if (s.turn !== pid) return;
+    slot = Number(slot);
+    if (!Number.isInteger(slot) || slot < 0 || slot >= s.truth.length || s.placed[slot]) return;
+    if (!s.truth.includes(item) || s.placed.includes(item)) return;
+    sortMove(room, cur, pid, item, slot);
+    emitState(room);
+  });
+  // Spielleiter: Zug ueberspringen (ohne Herzverlust), z. B. wenn jemand nicht reagiert
+  sock.on('host:sortSkip', () => {
+    const room = hostRoom();
+    const cur = room && room.current;
+    if (!cur || cur.typ !== 'sortieren' || cur.state !== 'open' || !cur.mini || !cur.mini.sort) return;
+    sortAdvance(room, cur);
     emitState(room);
   });
   sock.on('host:open', (opts) => {
@@ -1334,6 +1432,13 @@ io.on('connection', sock => {
         if (!r.order.length && cur.state !== 'reveal') { cur.state = 'reveal'; cur.result = 'done'; }
       }
     } else if (cur) {
+      if (cur.mini && cur.mini.sort && cur.state === 'open') {   // Sortieren: Spieler aus der Zugfolge nehmen
+        const s = cur.mini.sort, i = s.order.indexOf(id), wasTurn = s.turn === id;
+        if (i >= 0) {
+          s.order.splice(i, 1); delete s.hearts[id]; delete s.correct[id];
+          if (wasTurn) { s.turn = s.order.length ? s.order[(i - 1 + s.order.length) % s.order.length] : null; sortAdvance(room, cur); }
+        }
+      }
       cur.locked.delete(id);
       delete cur.guesses[id];
       if (cur.mini) delete cur.mini.answers[id];
@@ -1382,6 +1487,7 @@ io.on('connection', sock => {
     p.socketId = sock.id;
     p.connected = true;
     sock.data = { code: room.code, role: 'player', pid: p.id };
+    { const cur = room.current; if (cur && cur.typ === 'sortieren' && cur.state === 'open' && cur.mini && cur.mini.sort && cur.mini.sort.turn == null) sortAdvance(room, cur); }   // Zug war ins Leere gelaufen
     cb({ ok: true, code: room.code, pid: p.id, token: p.token, name: p.name });
     emitState(room);
   });
@@ -1394,7 +1500,12 @@ io.on('connection', sock => {
       emitState(room);
     } else if (sock.data.role === 'player') {
       const p = player(room, sock.data.pid);
-      if (p && p.socketId === sock.id) { p.connected = false; p.socketId = null; emitState(room); }
+      if (p && p.socketId === sock.id) {
+        p.connected = false; p.socketId = null;
+        const cur = room.current;
+        if (cur && cur.typ === 'sortieren' && cur.state === 'open' && cur.mini && cur.mini.sort && cur.mini.sort.turn === p.id) sortAdvance(room, cur);   // Zug geht ohne Strafe weiter
+        emitState(room);
+      }
     }
   });
 });

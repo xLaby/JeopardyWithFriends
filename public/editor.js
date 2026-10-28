@@ -20,16 +20,16 @@ const safeName = n => {
   const base = slug(i > 0 ? n.slice(0, i) : n), ext = i > 0 ? n.slice(i + 1).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
   return ext ? base + '.' + ext : base;
 };
-const MINI_T = ['sortieren', 'zuordnen', 'geo'], MAX_ITEMS = 8;
-const emptyItem = () => ({ text: '', bild: '' });
+const MINI_T = ['sortieren', 'zuordnen', 'geo'], MAX_ITEMS = 10;
+const emptyItem = () => ({ text: '', bild: '', info: '', start: false });
 const emptyQ = () => ({ frage: '', antwort: '', typ: 'buzzer', einheit: '', zeit: 0, dauer: 20, joker: false, bild: '', sound: '', antwortBild: '',
-  items: [], paare: [], anfang: '', ende: '', ziel: { lat: '', lng: '' } });
+  items: [], paare: [], anfang: '', ende: '', herzen: 0, abwaerts: false, karte: '', aspekt: 1, ziel: { x: '', y: '' } });
 const itemFilled = it => !!(it && ((it.text || '').trim() || it.bild));
-const miniFilled = q => MINI_T.includes(q.typ) && ((q.items || []).some(itemFilled) || (q.paare || []).some(p => itemFilled(p.links) || itemFilled(p.rechts)) || !!(q.ziel && q.ziel.lat !== '' && q.ziel.lng !== '' && q.ziel.lat != null));
+const miniFilled = q => MINI_T.includes(q.typ) && ((q.items || []).some(itemFilled) || (q.paare || []).some(p => itemFilled(p.links) || itemFilled(p.rechts)) || !!q.karte || !!(q.ziel && q.ziel.x !== '' && q.ziel.y !== '' && q.ziel.x != null));
 const isEmpty = q => !q.frage && !q.antwort && !q.bild && !q.sound && !miniFilled(q);
 // Medien-Pfade einer Frage: bild, sound, antwortBild plus die Bilder der Elemente (items.0.bild, paare.1.links.bild)
 function refPaths(q) {
-  const out = ['bild', 'sound', 'antwortBild'];
+  const out = ['bild', 'sound', 'antwortBild', 'karte'];
   (q.items || []).forEach((_, i) => out.push('items.' + i + '.bild'));
   (q.paare || []).forEach((_, i) => out.push('paare.' + i + '.links.bild', 'paare.' + i + '.rechts.bild'));
   return out;
@@ -92,7 +92,7 @@ function linkProblem(v, kind) {
   if (!ok.test(ext)) return 'endet nicht auf eine ' + (kind === 'sound' ? 'Audio' : 'Bild') + '-Datei (' + (ext ? '.' + ext : 'keine Endung') + '). Vermutlich eine Seite statt einer Datei – Rechtsklick → „Bildadresse kopieren" nutzen.';
   return '';
 }
-const normItem = it => (typeof it === 'string' || typeof it === 'number') ? { text: s(it, 80), bild: '' } : { text: s(it && it.text, 80), bild: mediaRef(it && it.bild) };
+const normItem = it => (typeof it === 'string' || typeof it === 'number') ? { text: s(it, 80), bild: '', info: '', start: false } : { text: s(it && it.text, 80), bild: mediaRef(it && it.bild), info: s(it && it.info, 40), start: !!(it && it.start) };
 function normQ(q) {
   q = q || {};
   const t = s(q.typ, 20).toLowerCase().replace('ä', 'ae');
@@ -104,7 +104,9 @@ function normQ(q) {
     items: (Array.isArray(q.items) ? q.items : []).slice(0, MAX_ITEMS).map(normItem),
     paare: (Array.isArray(q.paare) ? q.paare : []).slice(0, MAX_ITEMS).map(p => ({ links: normItem(p && p.links), rechts: normItem(p && p.rechts) })),
     anfang: s(q.anfang, 30), ende: s(q.ende, 30),
-    ziel: { lat: q.ziel && q.ziel.lat != null && q.ziel.lat !== '' ? Number(q.ziel.lat) : '', lng: q.ziel && q.ziel.lng != null && q.ziel.lng !== '' ? Number(q.ziel.lng) : '' }
+    herzen: num(q.herzen), abwaerts: !!q.abwaerts, karte: mediaRef(q.karte),
+    aspekt: Number(q.aspekt) >= 0.2 && Number(q.aspekt) <= 5 ? Number(q.aspekt) : 1,
+    ziel: { x: q.ziel && q.ziel.x != null && q.ziel.x !== '' && Number.isFinite(Number(q.ziel.x)) ? Number(q.ziel.x) : '', y: q.ziel && q.ziel.y != null && q.ziel.y !== '' && Number.isFinite(Number(q.ziel.y)) ? Number(q.ziel.y) : '' }
   };
 }
 function normPkg(raw) {
@@ -140,13 +142,19 @@ function cleanQ(q, finale) {
   if (!finale && q.joker) o.joker = true;
   ['bild', 'sound', 'antwortBild'].forEach(k => { if (q[k]) o[k] = q[k].trim(); });
   const it = i => { const r = {}; if (i.text.trim()) r.text = i.text.trim(); if (i.bild) r.bild = i.bild.trim(); return r; };
+  const sit = i => { const r = it(i); if ((i.info || '').trim()) r.info = i.info.trim(); if (i.start) r.start = true; return r; };
   if (!finale && q.typ === 'sortieren') {
-    o.items = q.items.filter(itemFilled).map(it);
+    o.items = q.items.filter(itemFilled).map(sit);
     if (q.anfang.trim()) o.anfang = q.anfang.trim();
     if (q.ende.trim()) o.ende = q.ende.trim();
+    if (q.herzen > 0 && q.herzen !== 3) o.herzen = q.herzen;
+    if (q.abwaerts) o.abwaerts = true;
   }
   if (!finale && q.typ === 'zuordnen') o.paare = q.paare.filter(p => itemFilled(p.links) && itemFilled(p.rechts)).map(p => ({ links: it(p.links), rechts: it(p.rechts) }));
-  if (!finale && q.typ === 'geo' && q.ziel.lat !== '' && q.ziel.lng !== '') o.ziel = { lat: Number(q.ziel.lat), lng: Number(q.ziel.lng) };
+  if (!finale && q.typ === 'geo') {
+    if (q.karte) o.karte = q.karte.trim();
+    if (q.ziel.x !== '' && q.ziel.y !== '') { o.ziel = { x: Math.round(q.ziel.x * 10000) / 10000, y: Math.round(q.ziel.y * 10000) / 10000 }; o.aspekt = Math.round(q.aspekt * 1000) / 1000; }
+  }
   return o;
 }
 function cleanPkg() {
@@ -220,14 +228,15 @@ function validate() {
 function miniChecks(q, label, ci, ri, add) {
   if (q.typ === 'sortieren') {
     const n = q.items.filter(itemFilled).length;
-    if (n < 2) add('err', label + ': Sortieren braucht mindestens 2 Elemente (richtige Reihenfolge von oben nach unten).', ci, ri);
+    if (n < 2) add('err', label + ': Sortieren braucht mindestens 2 Elemente (richtige Reihenfolge, links beginnt Platz 1).', ci, ri);
+    if (q.items.filter(it => it.start).length > 1) add('warn', label + ': Mehrere Elemente sind als Start markiert – es zählt das erste.', ci, ri);
   } else if (q.typ === 'zuordnen') {
     const n = q.paare.filter(p => itemFilled(p.links) && itemFilled(p.rechts)).length;
     if (n < 2) add('err', label + ': Zuordnen braucht mindestens 2 vollständige Paare.', ci, ri);
     if (q.paare.some(p => itemFilled(p.links) !== itemFilled(p.rechts))) add('warn', label + ': Ein Paar ist nur halb ausgefüllt und wird weggelassen.', ci, ri);
   } else if (q.typ === 'geo') {
-    const la = q.ziel.lat, ln = q.ziel.lng;
-    if (la === '' || ln === '' || !(Math.abs(la) <= 90) || !(Math.abs(ln) <= 180)) add('err', label + ': Geoguessr braucht ein gültiges Ziel (Breite −90 bis 90, Länge −180 bis 180). Per „Auf Karte wählen“ setzen.', ci, ri);
+    if (!q.karte) add('err', label + ': Geoguessr braucht ein Kartenbild (Datei oder https-Link).', ci, ri);
+    else if (q.ziel.x === '' || q.ziel.y === '') add('err', label + ': Auf dem Kartenbild ist noch kein Ziel gesetzt (Knopf „Ziel auf Karte setzen“).', ci, ri);
     if (!q.antwort) add('warn', label + ': Kein Ortsname bei „Antwort“ – wird bei der Auflösung angezeigt.', ci, ri);
   }
 }
@@ -281,12 +290,12 @@ function objUrl(name) {
 
 /* ---------- Medien ---------- */
 // Bilder verkleinern (max 1280 px) und als JPEG speichern; kleine PNG/GIF bleiben wie sie sind
-async function prepareImage(file) {
+async function prepareImage(file, maxPx = 1280) {
   const keep = (file.type === 'image/png' || file.type === 'image/gif' || file.type === 'image/svg+xml') && file.size < 1048576;
   if (keep) return { blob: file, ext: file.type === 'image/png' ? 'png' : file.type === 'image/gif' ? 'gif' : 'svg' };
   try {
     const bmp = await (window.createImageBitmap ? createImageBitmap(file) : loadImg(file));
-    const sc = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
+    const sc = Math.min(1, maxPx / Math.max(bmp.width, bmp.height));
     const cv = document.createElement('canvas');
     cv.width = Math.max(1, Math.round(bmp.width * sc)); cv.height = Math.max(1, Math.round(bmp.height * sc));
     const g = cv.getContext('2d');
@@ -314,7 +323,7 @@ async function addMedia(file, f, ci, ri) {
     if (file.size > 3 * 1048576) toast('Sound ist ' + fmtSize(file.size) + ' – für Sofort-Pakete besser auf unter 3 MB kürzen.', true);
   } else {
     if (!/^image\//.test(file.type)) return toast('Das ist keine Bilddatei.', true);
-    const r = await prepareImage(file);
+    const r = await prepareImage(file, f === 'karte' ? 2400 : 1280);
     blob = r.blob; name = name.replace(/\.[^.]+$/, '') + '.' + r.ext;
   }
   name = uniqueName(safeName(name), blob);
@@ -322,12 +331,14 @@ async function addMedia(file, f, ci, ri) {
   if (urls.has(name)) { URL.revokeObjectURL(urls.get(name)); urls.delete(name); }
   await idb(() => IDB.put(name, blob));
   setRef(qAt(ci, ri), f, name);
+  if (f === 'karte') qAt(ci, ri).ziel = { x: '', y: '' };   // neue Karte: altes Ziel passt nicht mehr
   save(); render();
   toast(name + ' hinzugefügt (' + fmtSize(blob.size) + ')');
 }
 function removeRef(f, ci, ri) {
   const q = qAt(ci, ri), name = getRef(q, f);
   setRef(q, f, '');
+  if (f === 'karte') q.ziel = { x: '', y: '' };
   if (name && !isUrl(name) && !allRefs().has(name)) {   // letzte Referenz weg -> Datei weg
     media.delete(name);
     if (urls.has(name)) { URL.revokeObjectURL(urls.get(name)); urls.delete(name); }
@@ -343,46 +354,35 @@ function dropUnused(name) {
   if (urls.has(name)) { URL.revokeObjectURL(urls.get(name)); urls.delete(name); }
   idb(() => IDB.del(name));
 }
-// Zielort per Karte waehlen (mit Ortssuche ueber Nominatim, nur auf Knopfdruck)
+// Ziel auf dem Kartenbild setzen: ins Bild klicken (danach verschiebbar). Merkt sich auch das Seitenverhaeltnis des Bildes.
 function pickGeo(ci, ri) {
-  if (typeof L === 'undefined') return toast('Die Karte konnte nicht geladen werden (Internetverbindung?).', true);
-  const q = qAt(ci, ri);
+  const q = qAt(ci, ri), v = q.karte;
+  const src = v ? (media.has(v) ? objUrl(v) : isUrl(v) ? v : '') : '';
+  if (!src) return toast('Erst ein Kartenbild hinzufügen (Datei oder https-Link).', true);
   const box = document.createElement('div');
   box.className = 'geomodal';
-  box.innerHTML = `<div class="geodlg"><div class="row"><input type="text" id="geoq" placeholder="Ort suchen, z. B. Eiffelturm Paris" style="flex:1"><button class="ghost" id="geosearch">Suchen</button></div>
-    <div id="geopick" class="geomap" style="height:min(55vh,460px)"></div>
-    <div class="muted" id="geoinfo">Tippe auf die Karte, um das Ziel zu setzen.</div>
+  box.innerHTML = `<div class="geodlg"><div class="muted" id="geoinfo">Klicke ins Bild, um das Ziel zu setzen. Du kannst den Punkt danach noch verschieben.</div>
+    <div class="mapwrap" id="mapwrap"><img id="mapimg" src="${esc(src)}" alt="" draggable="false"><span class="mapdot" id="mapdot" hidden>🎯</span></div>
     <div class="row"><button id="geook" disabled>Übernehmen</button><button class="ghost" id="geocancel">Abbrechen</button></div></div>`;
   document.body.appendChild(box);
-  let pos = (q.ziel.lat !== '' && q.ziel.lng !== '') ? { lat: Number(q.ziel.lat), lng: Number(q.ziel.lng) } : null;
-  const map = L.map('geopick', { minZoom: 2, maxZoom: 18, maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1 }).setView(pos ? [pos.lat, pos.lng] : [30, 10], pos ? 6 : 2);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, noWrap: true, attribution: '© OpenStreetMap-Mitwirkende' }).addTo(map);
-  let marker = null;
-  const info = document.getElementById('geoinfo'), ok = document.getElementById('geook');
-  const set = (lat, lng) => {
-    pos = { lat: +lat.toFixed(5), lng: +lng.toFixed(5) };
-    if (marker) marker.setLatLng([pos.lat, pos.lng]); else marker = L.marker([pos.lat, pos.lng]).addTo(map);
-    info.textContent = 'Ziel: ' + pos.lat + ', ' + pos.lng; ok.disabled = false;
-  };
-  if (pos) set(pos.lat, pos.lng);
-  map.on('click', e => set(e.latlng.lat, e.latlng.wrap().lng));
-  const close = () => { map.remove(); box.remove(); };
+  const img = document.getElementById('mapimg'), dot = document.getElementById('mapdot'), ok = document.getElementById('geook'), info = document.getElementById('geoinfo');
+  let pos = (q.ziel.x !== '' && q.ziel.y !== '') ? { x: Number(q.ziel.x), y: Number(q.ziel.y) } : null;
+  const show = () => { if (!pos) return; dot.hidden = false; dot.style.left = pos.x * 100 + '%'; dot.style.top = pos.y * 100 + '%'; ok.disabled = false; info.textContent = 'Ziel: ' + Math.round(pos.x * 100) + ' % von links, ' + Math.round(pos.y * 100) + ' % von oben'; };
+  show();
+  img.onerror = () => { info.textContent = 'Das Bild lädt nicht (Link blockiert das Einbetten?).'; };
+  img.addEventListener('click', e => {
+    const r = img.getBoundingClientRect();
+    pos = { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) };
+    show();
+  });
+  const close = () => box.remove();
   document.getElementById('geocancel').onclick = close;
   box.addEventListener('click', e => { if (e.target === box) close(); });
-  ok.onclick = () => { q.ziel = { lat: pos.lat, lng: pos.lng }; save(); close(); render(); };
-  const search = async () => {
-    const term = document.getElementById('geoq').value.trim(); if (!term) return;
-    info.textContent = 'Suche …';
-    try {
-      const r = await (await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(term), { headers: { 'Accept-Language': 'de' } })).json();
-      if (!r.length) { info.textContent = 'Nichts gefunden. Anderen Suchbegriff probieren oder direkt auf die Karte tippen.'; return; }
-      const lat = Number(r[0].lat), lng = Number(r[0].lon);
-      map.setView([lat, lng], 8); set(lat, lng); info.textContent = (r[0].display_name || '').slice(0, 90) + ' (Pin bei Bedarf verschieben)';
-    } catch (e) { info.textContent = 'Suche nicht möglich. Direkt auf die Karte tippen.'; }
+  ok.onclick = () => {
+    q.ziel = { x: +pos.x.toFixed(4), y: +pos.y.toFixed(4) };
+    if (img.naturalWidth && img.naturalHeight) q.aspekt = +(img.naturalWidth / img.naturalHeight).toFixed(4);
+    save(); close(); render();
   };
-  document.getElementById('geosearch').onclick = search;
-  document.getElementById('geoq').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
-  setTimeout(() => map.invalidateSize(), 80);
 }
 
 /* ---------- Import / Export ---------- */
@@ -522,7 +522,7 @@ function qCard(ci, ri, q, fin) {
   if (typ === 'schaetzen') extraFields = `<div class="two"><label class="field">Einheit (z. B. €)<input type="text" data-f="einheit" data-ci="${ci}" data-ri="${ri}" maxlength="10" value="${esc(q.einheit)}"></label>
     <label class="field">Schätzzeit in s (leer = Standard)<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label></div>`;
   else if (typ === 'reveal') extraFields = `<label class="field">Dauer in s, in der das Bild scharf wird (Sound: Stufen per Knopf)<input type="text" inputmode="numeric" data-f="dauer" data-ci="${ci}" data-ri="${ri}" value="${q.dauer || 20}"></label>`;
-  else if (MINI_T.includes(typ)) extraFields = `<label class="field">Zeit in s (leer = Standard ${typ === 'geo' ? 45 : 60})<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label>`;
+  else if (MINI_T.includes(typ)) extraFields = `<label class="field">${typ === 'sortieren' ? 'Zeit pro Zug in s' : 'Zeit in s'} (leer = Standard ${typ === 'geo' ? 45 : typ === 'sortieren' ? 25 : 60})<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label>`;
   else if (fin) extraFields = `<label class="field">Antwortzeit in s (leer = Standard)<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label>`;
   return `<div class="qcard ${isEmpty(q) ? 'empty' : ''}" id="q-${ci}-${ri}">
     <div class="qh"><span class="v">${head}</span>
@@ -533,7 +533,7 @@ function qCard(ci, ri, q, fin) {
         <option value="reveal" ${typ === 'reveal' ? 'selected' : ''}>Reveal (Bild/Sound wird enthüllt)</option>
         <option value="sortieren" ${typ === 'sortieren' ? 'selected' : ''}>Mini-Game: Sortieren</option>
         <option value="zuordnen" ${typ === 'zuordnen' ? 'selected' : ''}>Mini-Game: Zuordnen</option>
-        <option value="geo" ${typ === 'geo' ? 'selected' : ''}>Mini-Game: Geoguessr (Pin auf Karte)</option></select></label>
+        <option value="geo" ${typ === 'geo' ? 'selected' : ''}>Mini-Game: Geoguessr (Pin auf Kartenbild)</option></select></label>
       <label><input type="checkbox" data-f="joker" data-ci="${ci}" data-ri="${ri}" ${q.joker ? 'checked' : ''}> festes Joker-Feld</label>`}
     </div>
     <label class="field">Frage${typ === 'reveal' ? ' (wird nach der Freigabe mit dem Medium gezeigt)' : ''}<textarea data-f="frage" data-ci="${ci}" data-ri="${ri}" maxlength="1000">${esc(q.frage)}</textarea></label>
@@ -542,7 +542,7 @@ function qCard(ci, ri, q, fin) {
       ${extraFields}
     </div>
     ${miniEditor(ci, ri, q, typ)}
-    <div class="media">${mediaBox(ci, ri, 'bild', typ === 'geo' ? 'Bild (z. B. Foto des gesuchten Ortes)' : 'Bild', q.bild)}${MINI_T.includes(typ) ? '' : mediaBox(ci, ri, 'sound', 'Sound', q.sound)}${mediaBox(ci, ri, 'antwortBild', 'Bild bei der Auflösung', q.antwortBild)}</div>
+    <div class="media">${mediaBox(ci, ri, 'bild', typ === 'geo' ? 'Bild zur Frage (optional, z. B. Foto des gesuchten Ortes)' : 'Bild', q.bild)}${MINI_T.includes(typ) ? '' : mediaBox(ci, ri, 'sound', 'Sound', q.sound)}${mediaBox(ci, ri, 'antwortBild', 'Bild bei der Auflösung', q.antwortBild)}</div>
   </div>`;
 }
 // Kleines Bildfeld fuer ein Element (Sortieren/Zuordnen)
@@ -558,10 +558,13 @@ function itemMedia(ci, ri, path, val) {
 function miniEditor(ci, ri, q, typ) {
   const at = `data-ci="${ci}" data-ri="${ri}"`;
   if (typ === 'sortieren') {
-    return `<div class="minied"><div class="muted">Elemente in der <b>richtigen Reihenfolge</b> eintragen (oben beginnt die Lösung). Die Spieler sehen sie gemischt. Text, Bild oder beides.</div>
-      <div class="two"><label class="field">Beschriftung oben (z. B. älteste zuerst)<input type="text" data-ip="anfang" ${at} maxlength="30" value="${esc(q.anfang)}"></label>
-      <label class="field">Beschriftung unten (z. B. jüngste)<input type="text" data-ip="ende" ${at} maxlength="30" value="${esc(q.ende)}"></label></div>
-      ${q.items.map((it, i) => `<div class="irow"><span class="inum">${i + 1}</span><input type="text" data-ip="items.${i}.text" ${at} maxlength="80" placeholder="Begriff" value="${esc(it.text)}">${itemMedia(ci, ri, 'items.' + i + '.bild', it.bild)}
+    return `<div class="minied"><div class="muted">Elemente in der <b>richtigen Reihenfolge</b> eintragen (links beginnt Platz 1). Die Spieler setzen sie reihum auf ein gemeinsames Brett, wer falsch setzt, verliert ein Herz. Der optionale <b>Wert</b> (z. B. „43 Todesfälle“) wird sichtbar, sobald ein Element richtig liegt. Mit <b>Start</b> bestimmst du das Element, das von Anfang an auf dem Brett liegt (sonst zufällig). Text, Bild oder beides.</div>
+      <div class="two"><label class="field">Beschriftung links (z. B. wenigste)<input type="text" data-ip="anfang" ${at} maxlength="30" value="${esc(q.anfang)}"></label>
+      <label class="field">Beschriftung rechts (z. B. meiste)<input type="text" data-ip="ende" ${at} maxlength="30" value="${esc(q.ende)}"></label></div>
+      <div class="two"><label class="field">Herzen pro Spieler (leer = 3)<input type="text" inputmode="numeric" data-f="herzen" ${at} value="${q.herzen || ''}"></label>
+      <label class="chk" style="align-self:flex-end"><input type="checkbox" data-f="abwaerts" ${at} ${q.abwaerts ? 'checked' : ''}> Plätze rückwärts nummerieren (z. B. 10 … 1)</label></div>
+      ${q.items.map((it, i) => `<div class="irow"><span class="inum">${i + 1}</span><input type="text" data-ip="items.${i}.text" ${at} maxlength="80" placeholder="Begriff" value="${esc(it.text)}"><input type="text" class="iinfo" data-ip="items.${i}.info" ${at} maxlength="40" placeholder="Wert (optional)" value="${esc(it.info)}">${itemMedia(ci, ri, 'items.' + i + '.bild', it.bild)}
+        <label class="chk sm" title="Dieses Element liegt am Anfang schon auf dem Brett"><input type="checkbox" data-ip="items.${i}.start" ${at} ${it.start ? 'checked' : ''}> Start</label>
         <span class="ibtns"><button class="ghost sm" data-act="itemmove" ${at} data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''}>▲</button><button class="ghost sm" data-act="itemmove" ${at} data-i="${i}" data-d="1" ${i === q.items.length - 1 ? 'disabled' : ''}>▼</button><button class="ghost sm" data-act="itemdel" ${at} data-i="${i}">✕</button></span></div>`).join('')}
       <button class="ghost sm" data-act="itemadd" ${at} ${q.items.length >= MAX_ITEMS ? 'disabled' : ''}>+ Element (max. ${MAX_ITEMS})</button></div>`;
   }
@@ -575,10 +578,11 @@ function miniEditor(ci, ri, q, typ) {
       <button class="ghost sm" data-act="pairadd" ${at} ${q.paare.length >= MAX_ITEMS ? 'disabled' : ''}>+ Paar (max. ${MAX_ITEMS})</button></div>`;
   }
   if (typ === 'geo') {
-    return `<div class="minied"><div class="muted">Die Spieler setzen einen Pin auf einer Weltkarte (ohne Beschriftungen). Wer am nächsten dran ist, gewinnt. Bei „Antwort“ den Ortsnamen eintragen, er wird bei der Auflösung gezeigt.</div>
-      <div class="row"><label class="field" style="flex:1">Breitengrad<input type="text" inputmode="decimal" data-ip="ziel.lat" ${at} value="${q.ziel.lat}" placeholder="z. B. 48.8584"></label>
-      <label class="field" style="flex:1">Längengrad<input type="text" inputmode="decimal" data-ip="ziel.lng" ${at} value="${q.ziel.lng}" placeholder="z. B. 2.2945"></label>
-      <button class="ghost" data-act="pickgeo" ${at} style="align-self:flex-end">🗺️ Auf Karte wählen</button></div></div>`;
+    const set = q.ziel.x !== '' && q.ziel.y !== '';
+    return `<div class="minied"><div class="muted">Lade ein <b>Kartenbild</b> hoch (Datei oder https-Link), z. B. die Karte eines Videospiels, und setze darauf das Ziel. Die Spieler setzen ihren Pin auf diesem Bild, wer am nächsten dran ist, gewinnt. Bei „Antwort“ den Ortsnamen eintragen, er wird bei der Auflösung gezeigt.</div>
+      ${mediaBox(ci, ri, 'karte', 'Kartenbild', q.karte)}
+      <div class="row" style="align-items:center"><button class="ghost" data-act="pickgeo" ${at} ${q.karte ? '' : 'disabled'}>🎯 Ziel auf Karte setzen</button>
+      <span class="muted">${set ? 'Ziel gesetzt (' + Math.round(q.ziel.x * 100) + ' % von links, ' + Math.round(q.ziel.y * 100) + ' % von oben)' : 'Noch kein Ziel gesetzt.'}</span></div></div>`;
   }
   return '';
 }
@@ -610,13 +614,13 @@ document.addEventListener('input', e => {
   const el = e.target;
   if (el.dataset.f !== undefined && el.tagName !== 'SELECT' && el.type !== 'checkbox') {
     const q = qAt(ciOf(el), +el.dataset.ri), f = el.dataset.f;
-    q[f] = (f === 'zeit' || f === 'dauer') ? num(el.value) : el.value;
+    q[f] = (f === 'zeit' || f === 'dauer' || f === 'herzen') ? num(el.value) : el.value;
     save(); refreshChecks();
   } else if (el.dataset.p === 'titel') { pkg.titel = el.value; save(); }
   else if (el.dataset.c === 'name') { pkg.kategorien[sel].name = el.value; save(); refreshChecks(); }
   else if (el.dataset.c === 'finname') { pkg.finale.name = el.value; save(); }
-  else if (el.dataset.mu !== undefined) { setRef(qAt(ciOf(el), +el.dataset.ri), el.dataset.mu, el.value.trim()); save(); refreshChecks(); }
-  else if (el.dataset.ip !== undefined) { const q = qAt(ciOf(el), +el.dataset.ri), p = el.dataset.ip; setRef(q, p, /^ziel\./.test(p) ? (el.value.trim() === '' || isNaN(Number(el.value.replace(',', '.'))) ? '' : Number(el.value.replace(',', '.'))) : el.value); save(); refreshChecks(); }
+  else if (el.dataset.mu !== undefined) { const q = qAt(ciOf(el), +el.dataset.ri); setRef(q, el.dataset.mu, el.value.trim()); if (el.dataset.mu === 'karte') q.ziel = { x: '', y: '' }; save(); refreshChecks(); }
+  else if (el.dataset.ip !== undefined && el.type !== 'checkbox') { const q = qAt(ciOf(el), +el.dataset.ri); setRef(q, el.dataset.ip, el.value); save(); refreshChecks(); }
 });
 document.addEventListener('change', e => {
   const el = e.target;
@@ -627,6 +631,12 @@ document.addEventListener('change', e => {
     save(); render();
   }
   else if (el.dataset.f === 'joker') { qAt(ciOf(el), +el.dataset.ri).joker = el.checked; save(); refreshChecks(); }
+  else if (el.dataset.f === 'abwaerts') { qAt(ciOf(el), +el.dataset.ri).abwaerts = el.checked; save(); refreshChecks(); }
+  else if (el.dataset.ip !== undefined && el.type === 'checkbox') {   // Start-Gegenstand: nur einer pro Frage
+    const q = qAt(ciOf(el), +el.dataset.ri), i = +/^items\.(\d+)\.start$/.exec(el.dataset.ip)[1];
+    q.items.forEach((it, k) => { it.start = k === i && el.checked; });
+    save(); render();
+  }
   else if (el.dataset.mf !== undefined) { const file = el.files[0]; if (file) addMedia(file, el.dataset.mf, ciOf(el), +el.dataset.ri); el.value = ''; }
   else if (el.dataset.mu !== undefined) render();
   else if (el.dataset.c === 'name' || el.dataset.c === 'finname') render();

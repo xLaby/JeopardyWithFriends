@@ -70,3 +70,10 @@ body{overflow-x:hidden}
 .pair>b{align-self:center;color:var(--gold-l)}
 .geomodal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:grid;place-items:center;z-index:2000;padding:14px}
 .geodlg{width:min(760px,100%);background:var(--tv,#1b1030);border-radius:16px;padding:14px;display:grid;gap:10px;box-shadow:0 0 0 2px var(--gold)}
+
+/* v4.1: Kartenbild-Ziel und Sortier-Werte */
+.mapwrap{position:relative;display:inline-block;line-height:0;cursor:crosshair;max-width:100%;justify-self:center}
+.mapwrap img{max-width:100%;max-height:68vh;border-radius:10px;user-select:none;-webkit-user-drag:none}
+.mapdot{position:absolute;transform:translate(-50%,-50%);font-size:30px;pointer-events:none;filter:drop-shadow(0 2px 3px #000)}
+.iinfo{max-width:150px;flex:0 0 150px!important;min-width:110px!important}
+.irow .chk.sm{display:inline-flex;align-items:center;gap:4px;font-size:.85rem}

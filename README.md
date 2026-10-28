@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 4.0
+# Quiz Show (Jeopardy-Stil) – Version 4.1
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -58,28 +58,31 @@ Podium plus Awards, die der Server aus dem Spielverlauf berechnet: Schnellster B
 ## Buzzer-Fairness
 Jedes Gerät misst selbst die Zeit zwischen „Buzzer wird sichtbar" und „Spieler drückt". Der Server sammelt nach dem ersten Buzz noch 250 ms lang weitere und nimmt die kürzeste Reaktionszeit. Wer drückt, bevor der Buzzer frei ist, wird 1 Sekunde gesperrt.
 
-## Mini-Games (neu in Version 4)
-Drei neue Fragentypen, bei denen **alle gleichzeitig auf dem eigenen Gerät spielen**. Die Punkte gibt es **nach Rang**: Platz 1 bekommt den vollen Feldwert, Platz 2 75 %, Platz 3 50 %, Platz 4 25 %, alle dahinter nichts. Bei gleichem Ergebnis gewinnt, wer schneller auf „Fertig“ gedrückt hat. Sind alle fertig, wird sofort ausgewertet, sonst nach Ablauf der Zeit oder wenn der Spielleiter „Zeit beenden“ drückt.
-- **Sortieren:** Begriffe oder Bilder (auch beides) in die richtige Reihenfolge bringen, per Ziehen am Griff (☰) oder mit ▲▼. Gewertet wird, wie viele an der richtigen Stelle stehen. Optional Beschriftungen für oben und unten (z. B. „älteste zuerst“).
+## Mini-Games (Version 4, überarbeitet in 4.1)
+Drei Fragentypen. **Zuordnen** und **Geoguessr** spielen alle gleichzeitig auf dem eigenen Gerät, **Sortieren** läuft seit 4.1 rundenbasiert. Bei Zuordnen und Geoguessr gibt es die Punkte **nach Rang**: Platz 1 bekommt den vollen Feldwert, Platz 2 75 %, Platz 3 50 %, Platz 4 25 %, alle dahinter nichts. Bei gleichem Ergebnis gewinnt, wer schneller auf „Fertig“ gedrückt hat. Sind alle fertig, wird sofort ausgewertet, sonst nach Ablauf der Zeit oder wenn der Spielleiter „Zeit beenden“ drückt.
+
+- **Sortieren (rundenbasiert, neu in 4.1):** Ein gemeinsames Brett mit festen Plätzen (z. B. 10 bis 1) und ein Pool mit den Gegenständen. Die Spieler sind **reihum** dran (wer das Feld gewählt hat, fängt an): einen Gegenstand aus dem Pool wählen, einen freien Platz wählen, „Hier platzieren“. Richtig = bleibt liegen und sein **Wert** (z. B. „43 Todesfälle“) wird sichtbar. Falsch oder Zeit abgelaufen = **ein Herz weg**, der Gegenstand bleibt im Pool. Jeder Spieler hat 3 Herzen (pro Frage mit `herzen` änderbar, 1 bis 5). Ein Gegenstand (`start`) liegt von Anfang an richtig auf dem Brett, sonst wird einer zufällig gewählt. Zu Ende ist das Spiel, wenn das Brett voll ist oder nur noch ein Spieler Herzen hat. **Wer die meisten Herzen hat, bekommt den vollen Feldwert** (bei Gleichstand zählt, wer mehr richtig gesetzt hat, bei völligem Gleichstand bekommen alle Besten den vollen Wert). Spieler ohne Herzen scheiden aus, getrennte Spieler werden ohne Strafe übersprungen. Der Spielleiter kann einen Zug überspringen oder das Spiel jederzeit beenden und werten. Zeit pro Zug: Standard 25 s (`zeit`).
 - **Zuordnen:** Paare verbinden (links antippen, dann rechts). Text und Bilder möglich. Gewertet wird die Zahl der richtigen Paare.
-- **Geoguessr:** Pin auf einer Weltkarte setzen (ohne Beschriftungen, damit Ortsnamen nichts verraten). Optional ein Bild zur Frage. Wer am nächsten dran ist, gewinnt; bei der Auflösung sieht man alle Pins mit Linien zum Ziel und die Entfernung in km.
+- **Geoguessr (Kartenbild, neu in 4.1):** Statt einer Weltkarte wird ein **hochgeladenes Kartenbild** gezeigt (Datei oder https-Link), z. B. die Karte eines Videospiels. Der Spielleiter setzt im Editor das Ziel auf dem Bild, die Spieler setzen ihren Pin darauf (zoomen und verschieben geht). Wer am nächsten dran ist, gewinnt; bei der Auflösung sieht man alle Pins mit Linien zum Ziel und den Abstand in Prozent der Bilddiagonale. Optional ein Bild zur Frage.
 - **Joker:** Gelten wie sonst. Doppelt verdoppelt die Punkte, Risiko zählt nur mit Platz 1 (dreifach), sonst gibt es den doppelten Wert als Abzug. Kaffeepause sperrt den Spieler für diese Frage. Joker-Felder geben dem Sieger (Platz 1) einen Joker.
 - **Rückgängig:** Die Auswertung lässt sich wie jede andere Wertung zurücknehmen.
-- **Kein Sound/Reveal:** Mini-Games laufen immer mit Zeitlimit (Standard 60 s bei Sortieren und Zuordnen, 45 s bei Geoguessr, pro Frage mit `zeit` änderbar).
+- **Zeitlimit:** Zuordnen 60 s, Geoguessr 45 s (gesamt), Sortieren 25 s pro Zug, jeweils pro Frage mit `zeit` änderbar.
 
 ### Fragen-Editor
-Im Editor gibt es beim Typ die drei Mini-Games. Elemente, Paare und Bilder trägst du direkt ein, bei Geoguessr wählst du das Ziel mit „Auf Karte wählen“ (mit Ortssuche). Die Prüfung meldet unvollständige Mini-Games.
+Im Editor gibt es beim Typ die drei Mini-Games. Beim **Sortieren** trägst du die Elemente in der richtigen Reihenfolge ein (links beginnt Platz 1), dazu optional einen Wert, ein Bild und mit „Start“ das Element, das schon am Anfang liegt. Außerdem: Beschriftungen links/rechts, Herzen und „Plätze rückwärts nummerieren“ (10 … 1). Bei **Geoguessr** lädst du das Kartenbild hoch und klickst mit „Ziel auf Karte setzen“ ins Bild. Die Prüfung meldet unvollständige Mini-Games.
 
 ### Format in der fragen.json
 ```json
-{ "typ": "sortieren", "frage": "Sortiere nach Alter.", "items": ["Buchdruck", {"text": "Telefon"}, {"bild": "x.jpg"}],
-  "anfang": "älteste", "ende": "neueste", "zeit": 60 }
+{ "typ": "sortieren", "frage": "Ordne nach Todesfällen pro Jahr.", "anfang": "wenigste", "ende": "meiste", "abwaerts": true, "herzen": 3, "zeit": 25,
+  "items": [ {"text": "Haie", "info": "10", "bild": "hai.jpg"}, {"text": "Mücke", "info": "725.000", "start": true}, "Krokodil" ] }
 { "typ": "zuordnen", "frage": "Land und Hauptstadt", "paare": [ {"links": "Deutschland", "rechts": "Berlin"}, {"links": {"bild": "fr.png"}, "rechts": "Paris"} ] }
-{ "typ": "geo", "frage": "Wo steht der Eiffelturm?", "antwort": "Paris", "ziel": {"lat": 48.8584, "lng": 2.2945}, "bild": "optional.jpg" }
+{ "typ": "geo", "frage": "Wo steht die Burg?", "antwort": "Burg", "karte": "weltkarte.png", "aspekt": 1.5, "ziel": {"x": 0.5, "y": 0.46} }
 ```
-Bei Sortieren steht die **richtige Reihenfolge von oben nach unten** in `items` (die Spieler sehen sie gemischt). Es sind 2 bis 8 Elemente bzw. Paare möglich. Ein Beispielpaket zum Ausprobieren ist `beispiel-minigames.json` (in der Lobby beim Hochladen verlinkt).
+Bei Sortieren steht die **richtige Reihenfolge** in `items` (links nach rechts, die Spieler sehen sie gemischt), 2 bis 10 Elemente. `info` ist der Wert, der nach dem richtigen Platzieren erscheint, `start: true` legt den Start-Gegenstand fest, `abwaerts: true` nummeriert die Plätze von n bis 1. Bei Geoguessr ist `karte` ein Dateiname im `media/`-Ordner oder ein https-Link, `ziel` ist der gesuchte Punkt als Anteil von Bildbreite (`x`) und -höhe (`y`), jeweils von links oben (0 bis 1). `aspekt` ist Breite geteilt durch Höhe des Bildes (der Editor setzt es automatisch, ohne Angabe gilt 1). Ein Beispielpaket ist `beispiel-minigames.json` mit der Beispielkarte `media/beispiel-karte.png`.
 
-**Hinweis Karte:** Die Karte nutzt Leaflet (liegt im Projekt unter `public/vendor/leaflet`) und lädt die Kartenkacheln von CARTO/OpenStreetMap aus dem Internet. Die Spieler brauchen dafür eine Internetverbindung, wie für die Schriften auch.
+**Hinweis Karte:** Die Karte nutzt Leaflet (liegt im Projekt unter `public/vendor/leaflet`) und braucht keine Kartenkacheln aus dem Internet mehr, nur das Kartenbild selbst. Bei einem https-Link muss die Seite das Einbetten erlauben, sonst lieber das Bild hochladen.
+
+**Tests:** `test/bots.js` spielt Sortieren und Geoguessr mit drei Bot-Spielern durch (Server vorher mit `PORT=3111 node server.js` starten, dann `PORT=3111 node test/bots.js`, braucht `npm i socket.io-client`).
 
 ## Designs
 In der Lobby gibt es ein Panel **Design**. Jedes Design ändert nicht nur die Farben, sondern das ganze Grunddesign: Schrift, Formen, Hintergrund, Animationen sowie das Layout von Board und Buzzer.

@@ -13,30 +13,66 @@
           "typ": "sortieren",
           "frage": "Sortiere die Planeten nach Abstand zur Sonne.",
           "items": [
-            "Merkur",
-            "Venus",
-            "Erde",
-            "Mars",
-            "Jupiter",
-            "Saturn"
+            {
+              "text": "Merkur",
+              "info": "58 Mio. km"
+            },
+            {
+              "text": "Venus",
+              "info": "108 Mio. km"
+            },
+            {
+              "text": "Erde",
+              "info": "150 Mio. km",
+              "start": true
+            },
+            {
+              "text": "Mars",
+              "info": "228 Mio. km"
+            },
+            {
+              "text": "Jupiter",
+              "info": "778 Mio. km"
+            },
+            {
+              "text": "Saturn",
+              "info": "1.434 Mio. km"
+            }
           ],
           "anfang": "nah an der Sonne",
           "ende": "weit weg",
-          "zeit": 60
+          "zeit": 25
         },
         {
           "typ": "sortieren",
           "frage": "Sortiere die Städte nach Einwohnerzahl.",
           "items": [
-            "Berlin",
-            "Hamburg",
-            "München",
-            "Köln",
-            "Frankfurt"
+            {
+              "text": "Berlin",
+              "info": "3,7 Mio."
+            },
+            {
+              "text": "Hamburg",
+              "info": "1,9 Mio."
+            },
+            {
+              "text": "München",
+              "info": "1,5 Mio."
+            },
+            {
+              "text": "Köln",
+              "info": "1,1 Mio."
+            },
+            {
+              "text": "Frankfurt",
+              "info": "0,76 Mio."
+            }
           ],
-          "anfang": "größte zuerst",
+          "anfang": "größte Stadt",
           "ende": "kleinste",
-          "zeit": 45
+          "zeit": 20,
+          "herzen": 2,
+          "abwaerts": true
         },
         {
           "typ": "sortieren",
@@ -51,7 +87,7 @@
           ],
           "anfang": "älteste",
           "ende": "neueste",
-          "zeit": 60,
+          "zeit": 25,
           "joker": true
         }
       ]
@@ -135,33 +171,39 @@
       "fragen": [
         {
           "typ": "geo",
-          "frage": "Wo steht der Eiffelturm?",
-          "antwort": "Paris, Frankreich",
+          "frage": "Wo steht die rote Burg auf der Karte?",
+          "antwort": "Burg",
+          "karte": "beispiel-karte.png",
+          "aspekt": 1.5,
           "ziel": {
-            "lat": 48.8584,
-            "lng": 2.2945
+            "x": 0.5,
+            "y": 0.46
           },
           "zeit": 30
         },
         {
           "typ": "geo",
-          "frage": "Wo steht die Oper mit den berühmten Segeldächern?",
-          "antwort": "Sydney, Australien",
+          "frage": "Setze deinen Pin auf den See im Osten.",
+          "antwort": "See",
+          "karte": "beispiel-karte.png",
+          "aspekt": 1.5,
           "ziel": {
-            "lat": -33.8568,
-            "lng": 151.2153
+            "x": 0.73,
+            "y": 0.66
           },
-          "zeit": 40
+          "zeit": 30
         },
         {
           "typ": "geo",
-          "frage": "Wo liegt die Inkastadt Machu Picchu?",
-          "antwort": "Peru",
+          "frage": "Wo ist der dunkle Wald im Westen?",
+          "antwort": "Wald",
+          "karte": "beispiel-karte.png",
+          "aspekt": 1.5,
           "ziel": {
-            "lat": -13.1631,
-            "lng": -72.545
+            "x": 0.25,
+            "y": 0.58
           },
-          "zeit": 45,
+          "zeit": 30,
           "joker": true
         }
       ]
