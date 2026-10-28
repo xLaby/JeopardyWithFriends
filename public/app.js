@@ -725,8 +725,11 @@ function card() {
 
   // Mini-Games: Spielbereich, Loesung fuer den Host, Rangliste nach der Wertung
   if (mini) {
-    if (!host && mine && c.locked.includes(me.pid) && c.state !== 'reveal') extra += '<div class="status">Kaffeepause – du setzt bei dieser Frage aus.</div>';
-    else if (c.state === 'open' && !host && mine) miniBox = c.typ === 'sortieren' ? sortPlay(c) : c.typ === 'zuordnen' ? matchPlay(c) : geoPlay(c);
+    if (!host && mine && c.locked.includes(me.pid) && c.state !== 'reveal') {
+      extra += '<div class="status">Kaffeepause – du setzt bei dieser Frage aus.</div>';
+      if (c.typ === 'sortieren' && c.state === 'open') miniBox = sortPlay(c, true);   // beim Sortieren live zuschauen
+    }
+    else if (c.state === 'open' && !host && mine) miniBox = c.typ === 'sortieren' ? sortPlay(c, !c.mini.sort || !c.mini.sort.order.includes(me.pid)) : c.typ === 'zuordnen' ? matchPlay(c) : geoPlay(c);
     else if (host && (c.state === 'reading' || c.state === 'open')) miniBox = hostMini(c);
     else if (c.state === 'reveal' && c.mini.result) miniBox = miniReveal(c);
   }
@@ -831,7 +834,7 @@ function miniStatus(c, host) {
   if ((myMini && myMini.key === c.cat + '-' + c.row && myMini.done) || (c.mini.mine && c.mini.mine.done)) return `Abgegeben! Warte auf die anderen (${d} von ${n} fertig).`;
   return { sortieren: 'Bring die Begriffe in die richtige Reihenfolge und drück auf „Fertig“. Bei Gleichstand gewinnt, wer schneller fertig ist.',
     zuordnen: 'Verbinde die passenden Paare: erst links antippen, dann rechts. Bei Gleichstand gewinnt, wer schneller fertig ist.',
-    geo: 'Tippe auf die Karte, um deinen Pin zu setzen, und bestätige ihn. Wer am nächsten dran ist, gewinnt.' }[c.typ];
+    geo: 'Tippe auf die Karte, um deinen Pin zu setzen, und bestätige ihn. Nur wer am nächsten dran ist, bekommt Punkte.' }[c.typ];
 }
 const doneRow = (m, can) => m.done ? '<div class="status soft">Abgegeben ✓</div>' : `<div class="row"><button data-act="minidone" ${can ? '' : 'disabled'}>Fertig</button></div>`;
 /* ---------- Sortieren (rundenbasiert) ---------- */

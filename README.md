@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 4.1
+# Quiz Show (Jeopardy-Stil) – Version 4.2
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -58,12 +58,12 @@ Podium plus Awards, die der Server aus dem Spielverlauf berechnet: Schnellster B
 ## Buzzer-Fairness
 Jedes Gerät misst selbst die Zeit zwischen „Buzzer wird sichtbar" und „Spieler drückt". Der Server sammelt nach dem ersten Buzz noch 250 ms lang weitere und nimmt die kürzeste Reaktionszeit. Wer drückt, bevor der Buzzer frei ist, wird 1 Sekunde gesperrt.
 
-## Mini-Games (Version 4, überarbeitet in 4.1)
-Drei Fragentypen. **Zuordnen** und **Geoguessr** spielen alle gleichzeitig auf dem eigenen Gerät, **Sortieren** läuft seit 4.1 rundenbasiert. Bei Zuordnen und Geoguessr gibt es die Punkte **nach Rang**: Platz 1 bekommt den vollen Feldwert, Platz 2 75 %, Platz 3 50 %, Platz 4 25 %, alle dahinter nichts. Bei gleichem Ergebnis gewinnt, wer schneller auf „Fertig“ gedrückt hat. Sind alle fertig, wird sofort ausgewertet, sonst nach Ablauf der Zeit oder wenn der Spielleiter „Zeit beenden“ drückt.
+## Mini-Games (Version 4, überarbeitet in 4.1 und 4.2)
+Drei Fragentypen. **Zuordnen** und **Geoguessr** spielen alle gleichzeitig auf dem eigenen Gerät, **Sortieren** läuft seit 4.1 rundenbasiert. Bei **Zuordnen** gibt es die Punkte **nach Rang**: Platz 1 bekommt den vollen Feldwert, Platz 2 75 %, Platz 3 50 %, Platz 4 25 %, alle dahinter nichts. Bei **Geoguessr** bekommt **nur der Nächste** Punkte (voller Feldwert), alle anderen nichts. Bei gleichem Ergebnis gewinnt, wer schneller auf „Fertig“ gedrückt hat. Sind alle fertig, wird sofort ausgewertet, sonst nach Ablauf der Zeit oder wenn der Spielleiter „Zeit beenden“ drückt.
 
-- **Sortieren (rundenbasiert, neu in 4.1):** Ein gemeinsames Brett mit festen Plätzen (z. B. 10 bis 1) und ein Pool mit den Gegenständen. Die Spieler sind **reihum** dran (wer das Feld gewählt hat, fängt an): einen Gegenstand aus dem Pool wählen, einen freien Platz wählen, „Hier platzieren“. Richtig = bleibt liegen und sein **Wert** (z. B. „43 Todesfälle“) wird sichtbar. Falsch oder Zeit abgelaufen = **ein Herz weg**, der Gegenstand bleibt im Pool. Jeder Spieler hat 3 Herzen (pro Frage mit `herzen` änderbar, 1 bis 5). Ein Gegenstand (`start`) liegt von Anfang an richtig auf dem Brett, sonst wird einer zufällig gewählt. Zu Ende ist das Spiel, wenn das Brett voll ist oder nur noch ein Spieler Herzen hat. **Wer die meisten Herzen hat, bekommt den vollen Feldwert** (bei Gleichstand zählt, wer mehr richtig gesetzt hat, bei völligem Gleichstand bekommen alle Besten den vollen Wert). Spieler ohne Herzen scheiden aus, getrennte Spieler werden ohne Strafe übersprungen. Der Spielleiter kann einen Zug überspringen oder das Spiel jederzeit beenden und werten. Zeit pro Zug: Standard 25 s (`zeit`).
+- **Sortieren (rundenbasiert, neu in 4.1):** Ein gemeinsames Brett mit festen Plätzen (z. B. 10 bis 1) und ein Pool mit den Gegenständen. Die Spieler sind **reihum** dran (wer das Feld gewählt hat, fängt an): einen Gegenstand aus dem Pool wählen, einen freien Platz wählen, „Hier platzieren“. Richtig = bleibt liegen und sein **Wert** (z. B. „43 Todesfälle“) wird sichtbar. Falsch oder Zeit abgelaufen = **ein Herz weg**, der Gegenstand bleibt im Pool. Jeder Spieler hat 3 Herzen (pro Frage mit `herzen` änderbar, 1 bis 5). Ein Gegenstand (`start`) liegt von Anfang an richtig auf dem Brett, sonst wird einer zufällig gewählt. Zu Ende ist das Spiel, wenn das Brett voll ist oder nur noch ein Spieler Herzen hat. **Wer die meisten Herzen hat, bekommt den vollen Feldwert** (bei Gleichstand zählt, wer mehr richtig gesetzt hat, bei völligem Gleichstand bekommen alle Besten den vollen Wert). Spieler ohne Herzen scheiden aus, getrennte Spieler werden ohne Strafe übersprungen. Spieler, die durch den Kaffeepause-Joker aussetzen, **schauen dem Spiel live zu**. Der Spielleiter kann einen Zug überspringen oder das Spiel jederzeit beenden und werten. Zeit pro Zug: Standard 25 s (`zeit`).
 - **Zuordnen:** Paare verbinden (links antippen, dann rechts). Text und Bilder möglich. Gewertet wird die Zahl der richtigen Paare.
-- **Geoguessr (Kartenbild, neu in 4.1):** Statt einer Weltkarte wird ein **hochgeladenes Kartenbild** gezeigt (Datei oder https-Link), z. B. die Karte eines Videospiels. Der Spielleiter setzt im Editor das Ziel auf dem Bild, die Spieler setzen ihren Pin darauf (zoomen und verschieben geht). Wer am nächsten dran ist, gewinnt; bei der Auflösung sieht man alle Pins mit Linien zum Ziel und den Abstand in Prozent der Bilddiagonale. Optional ein Bild zur Frage.
+- **Geoguessr (Kartenbild, neu in 4.1):** Statt einer Weltkarte wird ein **hochgeladenes Kartenbild** gezeigt (Datei oder https-Link), z. B. die Karte eines Videospiels. Der Spielleiter setzt im Editor das Ziel auf dem Bild, die Spieler setzen ihren Pin darauf (zoomen und verschieben geht). **Nur wer am nächsten dran ist, bekommt Punkte** (bei exakt gleichem Abstand entscheidet, wer schneller bestätigt hat). Bei der Auflösung sieht man alle Pins mit Linien zum Ziel und den Abstand in Prozent der Bilddiagonale. Optional ein Bild zur Frage.
 - **Joker:** Gelten wie sonst. Doppelt verdoppelt die Punkte, Risiko zählt nur mit Platz 1 (dreifach), sonst gibt es den doppelten Wert als Abzug. Kaffeepause sperrt den Spieler für diese Frage. Joker-Felder geben dem Sieger (Platz 1) einen Joker.
 - **Rückgängig:** Die Auswertung lässt sich wie jede andere Wertung zurücknehmen.
 - **Zeitlimit:** Zuordnen 60 s, Geoguessr 45 s (gesamt), Sortieren 25 s pro Zug, jeweils pro Frage mit `zeit` änderbar.
@@ -82,7 +82,30 @@ Bei Sortieren steht die **richtige Reihenfolge** in `items` (links nach rechts, 
 
 **Hinweis Karte:** Die Karte nutzt Leaflet (liegt im Projekt unter `public/vendor/leaflet`) und braucht keine Kartenkacheln aus dem Internet mehr, nur das Kartenbild selbst. Bei einem https-Link muss die Seite das Einbetten erlauben, sonst lieber das Bild hochladen.
 
-**Tests:** `test/bots.js` spielt Sortieren und Geoguessr mit drei Bot-Spielern durch (Server vorher mit `PORT=3111 node server.js` starten, dann `PORT=3111 node test/bots.js`, braucht `npm i socket.io-client`).
+## Code-Aufbau
+`server.js` ist nur der Einstiegspunkt (Express, Socket.io, Start). Die Spiellogik liegt in `lib/`:
+
+| Datei | Inhalt |
+|---|---|
+| `config.js` | Konstanten (Joker, Zeiten, Designs, Farben) und der Raum-Speicher `rooms` |
+| `questions.js` | Fragenpaket prüfen und normalisieren, Standardpaket laden |
+| `rooms.js` | Räume, Spieler, Rückgängig-Snapshots, Joker-Verteilung, Spielerreihenfolge |
+| `game.js` | Punkte und Joker-Wirkung, Felder öffnen, Buzzer, Schätzfrage-Auflösung |
+| `minigames.js` | Zuordnen, Geoguessr und das rundenbasierte Sortieren |
+| `finale.js` | Finale mit verdecktem Einsatz |
+| `persist.js` | Spielstand sichern und laden |
+| `awards.js` | Auszeichnungen für die Siegerehrung |
+| `state.js` | Zustand pro Rolle (Spielleiter/Spieler) aufbereiten und senden, alte Räume aufräumen |
+| `http.js` | HTTP-Routen (Medien, Upload, Export, Wiederherstellen) |
+| `sockets.js` | Alle Socket-Ereignisse von Spielleiter und Spielern |
+| `hub.js` | Gemeinsame Ablage, über die sich die Module gegenseitig aufrufen |
+
+Jedes Modul trägt seine Funktionen am Ende mit `hub.register({...})` ein und holt sich Funktionen aus anderen Modulen am Anfang über kleine Weiterleitungen (`const award = (...a) => hub.award(...a);`). So dürfen sich Module gegenseitig aufrufen, ohne dass sich das Laden im Kreis dreht. Wer in einem Modul eine Funktion eines anderen Moduls braucht, ergänzt diese Zeile; vergisst man es, meldet `npm run lint` den Fehler (`no-undef`).
+
+## Tests
+`npm test` startet einen eigenen Server auf freiem Port und spielt mit Bot-Spielern alles Wichtige durch: Buzzer (Reaktionszeit, Sperre, Abzug), alle drei Joker, Rückgängig, Schätzfrage, Risiko, Spielstand sichern/laden, Finale (Entscheidung, Einsatz, Auswertung), außerdem Sortieren (Züge, Herzen, Zeit, Ausfall und Entfernen von Spielern), Zuordnen und Geoguessr (nur der Nächste bekommt Punkte). Einzelne Datei: `npm test minigames`. `npm run lint` prüft den Code statisch.
+
+Bei jedem Push läuft beides automatisch über GitHub Actions (`.github/workflows/test.yml`, Node 18, 20 und 22). Neue Regeln am besten gleich mit einem Test in `test/` absichern.
 
 ## Designs
 In der Lobby gibt es ein Panel **Design**. Jedes Design ändert nicht nur die Farben, sondern das ganze Grunddesign: Schrift, Formen, Hintergrund, Animationen sowie das Layout von Board und Buzzer.
