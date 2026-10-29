@@ -2,46 +2,73 @@
 // Mini-Games: Sortieren (rundenbasiert), Zuordnen, Geoguessr (Kartenbild)
 const { wait, newGame } = require('./helpers');
 
-const PKG = { titel: 'T', werte: [100, 200, 300, 400], kategorien: [{ name: 'Mini', fragen: [
+const PKG = { titel: 'T', werte: [100, 200, 300, 400, 500], kategorien: [{ name: 'Mini', fragen: [
   { typ: 'sortieren', frage: 'Sortiere', herzen: 2, zeit: 3, items: [{ text: 'a', info: '1' }, { text: 'b', info: '2' }, { text: 'c', info: '3' }, { text: 'd', info: '4' }] },
   { typ: 'geo', frage: 'Wo?', antwort: 'Burg', karte: 'beispiel-karte.png', aspekt: 1.5, ziel: { x: 0.5, y: 0.5 } },
   { typ: 'zuordnen', frage: 'Paare', paare: [{ links: 'DE', rechts: 'Berlin' }, { links: 'FR', rechts: 'Paris' }, { links: 'IT', rechts: 'Rom' }] },
-  { typ: 'sortieren', frage: 'Sortiere 2', zeit: 20, items: ['x', 'y', 'z'] }] }] };
+  { typ: 'sortieren', frage: 'Sortiere 2', zeit: 20, items: ['x', 'y', 'z'] },
+  { typ: 'sortieren', frage: 'Streng', streng: true, herzen: 3, zeit: 20, items: ['p', 'q', 'r', 's', 't'] }] }] };
 
 module.exports = async ({ url, t }) => {
   const g = await newGame(url, PKG);
   const [A, B, C] = g.players;
   const sort = () => g.HS.current.mini.sort;   // Zustand des Spielleiters (bleibt auch dann aktuell, wenn ein Spieler-Socket getrennt wird)
 
-  console.log('Sortieren');
+  // Hilfen fuer die links/rechts-Regel: die Wahrheit kennt nur der Spielleiter (hostTruth), die Spieler sehen nur Reihe und Pool
+  const truthTexts = () => g.HS.current.mini.hostTruth.map(x => x.text);
+  const textOf = id => { const it = [...sort().pool, ...sort().line].find(i => i.id === id); return it && it.text; };
+  const tIdx = id => truthTexts().indexOf(textOf(id));
+  const move = (pid, item, ref, side) => { g.byPid(pid).sock.emit('player:sortPlace', { item, ref, side }); return wait(130); };
+  const sideOf = (item, ref) => tIdx(item) < tIdx(ref) ? 'left' : 'right';                    // die richtige Seite
+  const other = s => s === 'left' ? 'right' : 'left';
+  // ein richtiger Zug mit dem naechsten Nachbarn als Bezug
+  const goodMove = async () => {
+    const who = sort().turn, X = sort().pool[0], R = sort().line.reduce((b, it) => Math.abs(tIdx(it) - tIdx(X.id)) < Math.abs(tIdx(b) - tIdx(X.id)) ? it.id : b, sort().line[0].id);
+    await move(who, X.id, R, sideOf(X.id, R));
+  };
+  // eine wahre, aber nicht direkt angrenzende Behauptung suchen (zwischen Gegenstand und Bezug liegt noch ein anderer)
+  const farClaim = () => {
+    for (const X of sort().pool) for (const R of sort().line) {
+      const lo = Math.min(tIdx(X.id), tIdx(R.id)), hi = Math.max(tIdx(X.id), tIdx(R.id));
+      if (sort().line.some(L => tIdx(L.id) > lo && tIdx(L.id) < hi)) return { X: X.id, R: R.id, side: sideOf(X.id, R.id) };
+    }
+    return null;
+  };
+
+  console.log('Sortieren (links/rechts)');
   await g.pick(0, 0); await g.open();
-  t.ok(!!sort() && sort().n === 4, 'Brett mit 4 Plätzen');
-  t.ok(sort().placed.filter(Boolean).length === 1, 'Genau ein Start-Gegenstand liegt');
+  const truthAtStart = truthTexts();   // nach der Auflösung gibt es hostTruth nicht mehr
+  t.ok(!!sort() && sort().n === 4, 'Reihe mit 4 Gegenständen im Spiel');
+  t.ok(sort().line.length === 1 && sort().line[0].info !== '', 'Nur der Start-Gegenstand liegt, sein Wert ist sichtbar');
   t.ok(sort().pool.length === 3 && sort().pool.every(i => i.info === ''), 'Pool zeigt noch keine Werte');
-  t.ok(!JSON.stringify(A.S.current).includes('truth'), 'Lösung steckt nicht im Spieler-Zustand');
+  t.ok(!JSON.stringify(A.S.current).includes('truth') && !JSON.stringify(A.S.current).includes('hostTruth'), 'Lösung steckt nicht im Spieler-Zustand');
   const first = sort().turn;
   t.ok(!!first, 'Jemand ist dran');
-  const other = g.players.find(p => p.pid !== first);
-  other.sock.emit('player:sortPlace', { item: sort().pool[0].id, slot: 0 }); await wait(120);
-  t.ok(sort().placed.filter(Boolean).length === 1 && sort().turn === first, 'Zug des Falschen wird ignoriert');
-  const truth = g.HS.current.mini.hostTruth.map(x => x.text);
-  const idByText = {}; [...sort().pool, ...sort().placed.filter(Boolean)].forEach(i => { idByText[i.text] = i.id; });
-  const free = () => sort().placed.map((p, i) => p ? -1 : i).filter(i => i >= 0);
-  const slotF = free()[0], wrongItem = sort().pool.find(i => i.text !== truth[slotF]);
-  g.byPid(first).sock.emit('player:sortPlace', { item: wrongItem.id, slot: slotF }); await wait(150);
-  t.ok(sort().hearts[first] === 1 && sort().last && !sort().last.ok, 'Falsch gesetzt: ein Herz weg');
-  t.ok(sort().pool.some(i => i.id === wrongItem.id), 'Falscher Gegenstand bleibt im Pool');
+  const outsider = g.players.find(p => p.pid !== first);
+  await move(outsider.pid, sort().pool[0].id, sort().line[0].id, 'left');
+  t.ok(sort().line.length === 1 && sort().turn === first && sort().last === null, 'Zug des Falschen wird ignoriert');
+  await move(first, sort().pool[0].id, sort().pool[1].id, 'left');
+  t.ok(sort().line.length === 1 && sort().turn === first, 'Bezug muss schon liegen (Pool-Gegenstand als Bezug wird ignoriert)');
+  await move(first, sort().line[0].id, sort().line[0].id, 'left');
+  t.ok(sort().turn === first && sort().last === null, 'Ein liegender Gegenstand kann nicht noch einmal gesetzt werden');
+  const X0 = sort().pool[0], S0 = sort().line[0];
+  await move(first, X0.id, S0.id, other(sideOf(X0.id, S0.id)));
+  t.ok(sort().hearts[first] === 1 && sort().last && !sort().last.ok, 'Falsche Seite: ein Herz weg');
+  t.ok(sort().pool.some(i => i.id === X0.id) && sort().line.length === 1, 'Falscher Gegenstand bleibt im Pool');
   t.ok(sort().turn !== first, 'Der Zug wechselt');
-  for (let i = 0; i < 10 && g.cur().state === 'open'; i++) {
-    const who = sort().turn, slot = free()[0]; if (!who || slot == null) break;
-    g.byPid(who).sock.emit('player:sortPlace', { item: idByText[truth[slot]], slot }); await wait(120);
-  }
+  for (let i = 0; i < 6 && sort().line.length < 3; i++) await goodMove();
+  t.ok(sort().line.length === 3, 'Richtige Züge legen den Gegenstand an seinen Platz in der Reihe');
+  const lineIdx = sort().line.map(it => tIdx(it.id));
+  t.ok(lineIdx.every((v, i) => i === 0 || v > lineIdx[i - 1]), 'Die Reihe ist immer richtig sortiert');
+  const far = farClaim();
+  if (far) { await move(sort().turn, far.X, far.R, far.side); t.ok(sort().last.ok, 'Normal: richtige Seite reicht, auch ohne direkt daneben'); }
+  for (let i = 0; i < 10 && g.cur().state === 'open'; i++) await goodMove();
   await wait(200);
-  t.ok(g.cur().state === 'reveal', 'Brett voll: Auflösung');
+  t.ok(g.cur().state === 'reveal', 'Reihe voll: Auflösung');
   const w = g.cur().winners;
   t.ok(w.length >= 1 && !w.includes(first), 'Wer ein Herz verloren hat, gewinnt nicht');
   t.ok(w.every(id => g.score(id) === 100), 'Gewinner bekommt den vollen Feldwert');
-  t.ok(g.cur().mini.result.truth.map(x => x.text).join() === truth.join(), 'Auflösung zeigt die richtige Reihenfolge');
+  t.ok(g.cur().mini.result.truth.map(x => x.text).join() === truthAtStart.join(), 'Auflösung zeigt die richtige Reihenfolge (mit Nummern)');
   g.host.emit('host:undo'); await wait(150);
   t.ok(g.cur().state === 'open' && w.every(id => g.score(id) === 0) && !!sort().turn, 'Rückgängig: Spiel läuft weiter, Punkte zurück');
   const t0 = sort().turn, h0 = sort().hearts[t0];
@@ -50,6 +77,22 @@ module.exports = async ({ url, t }) => {
   g.host.emit('host:skip'); await wait(150);
   t.ok(g.cur().state === 'reveal', 'Spielleiter kann beenden und werten');
   g.host.emit('host:close'); await wait(120);
+
+  console.log('Sortieren: streng (direkt daneben)');
+  await g.pick(0, 4); await g.open();
+  t.ok(sort().streng === true, 'Strenger Modus ist aktiv');
+  for (let i = 0; i < 6 && sort().line.length < 3; i++) await goodMove();
+  const hard = farClaim();
+  t.ok(!!hard, 'Es gibt eine Behauptung, die richtig, aber nicht direkt daneben ist');
+  if (hard) {
+    const who = sort().turn, hb = sort().hearts[who], poolBefore = sort().pool.length;
+    await move(who, hard.X, hard.R, hard.side);
+    t.ok(sort().hearts[who] === hb - 1 && sort().pool.length === poolBefore && !sort().last.ok, 'Streng: nicht direkt daneben gilt als falsch');
+    const X = sort().pool[0], R = sort().line.reduce((b, it) => Math.abs(tIdx(it.id) - tIdx(X.id)) < Math.abs(tIdx(b) - tIdx(X.id)) ? it.id : b, sort().line[0].id);
+    await move(sort().turn, X.id, R, sideOf(X.id, R));
+    t.ok(sort().last.ok, 'Streng: direkt neben dem Nachbarn ist richtig');
+  }
+  g.host.emit('host:skip'); await wait(150); g.host.emit('host:close'); await wait(120);
 
   console.log('Geoguessr mit Kartenbild');
   await g.pick(0, 1);

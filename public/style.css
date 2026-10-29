@@ -670,3 +670,9 @@ button.szoom{position:absolute;right:4px;top:4px;padding:1px 6px;min-width:0;fon
 [data-theme="arcade"] .sc b,[data-theme="arcade"] .sc small{font-size:.7rem}
 [data-theme="scifi"] .sslot.filled,[data-theme="scifi"] button.sitem{background:rgba(25,227,255,.07);box-shadow:inset 0 0 0 1px rgba(25,227,255,.5)}
 .geomap.leaflet-container,.geomap .leaflet-container{background:#0b0c1e}
+/* v4.2: Reihe aus Karten statt Plaetzen (links/rechts-Variante) */
+button.sslot.filled{color:var(--cream);text-transform:none;border:0;cursor:pointer;font:inherit}
+button.sslot.filled:disabled{opacity:1;cursor:default;filter:none}
+button.sslot.filled.sel{box-shadow:inset 0 0 0 3px var(--gold),0 0 16px rgba(var(--gold-rgb),.7);background:rgba(var(--gold-rgb),.2)}
+[data-theme="comic"] button.sslot.filled{color:#111}
+[data-theme="anime"] button.sslot.filled{color:#4a2c6b}

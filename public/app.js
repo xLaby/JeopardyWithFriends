@@ -826,7 +826,7 @@ function miniStatus(c, host) {
   if (c.typ === 'sortieren' && c.mini.sort) {
     const t = c.mini.sort.turn;
     if (t == null) return host ? 'Niemand ist verbunden – warte oder beende das Spiel.' : 'Warte auf die Mitspieler …';
-    return t === (me && me.pid) ? 'Du bist dran! Gegenstand wählen, Platz wählen, platzieren.' : esc(pname(t)) + ' ist dran.';
+    return t === (me && me.pid) ? 'Du bist dran! Gegenstand wählen, einen liegenden antippen, links oder rechts.' : esc(pname(t)) + ' ist dran.';
   }
   const n = S.players.filter(p => p.connected && !c.locked.includes(p.id)).length, d = c.mini.submitted.length;
   if (host) return `${d} von ${n} fertig.`;
@@ -838,14 +838,16 @@ function miniStatus(c, host) {
 }
 const doneRow = (m, can) => m.done ? '<div class="status soft">Abgegeben ✓</div>' : `<div class="row"><button data-act="minidone" ${can ? '' : 'disabled'}>Fertig</button></div>`;
 /* ---------- Sortieren (rundenbasiert) ---------- */
-let mySort = { key: '', item: null, slot: null };
-// Auswahl (Gegenstand + Platz) gilt nur, solange ich dran bin und beides noch frei ist
+// Wachsende Reihe: Gegenstand aus dem Pool waehlen, einen schon liegenden Gegenstand antippen, dann "links davon" oder "rechts davon".
+// Platznummern gibt es erst bei der Aufloesung.
+let mySort = { key: '', item: null, ref: null };
+// Auswahl gilt nur, solange ich dran bin und beides noch existiert
 function sortSel(c) {
   const k = c.cat + '-' + c.row, s = c.mini.sort;
-  if (mySort.key !== k) mySort = { key: k, item: null, slot: null };
+  if (mySort.key !== k) mySort = { key: k, item: null, ref: null };
   const myTurn = !!s && c.state === 'open' && !!me && s.turn === me.pid;
-  if (!myTurn || (mySort.item && !s.pool.some(i => i.id === mySort.item))) { mySort.item = null; mySort.slot = null; }
-  if (mySort.slot != null && (!s || s.placed[mySort.slot])) mySort.slot = null;
+  if (!myTurn || (mySort.item && !s.pool.some(i => i.id === mySort.item))) { mySort.item = null; mySort.ref = null; }
+  if (mySort.ref && (!s || !s.line.some(i => i.id === mySort.ref))) mySort.ref = null;
   return mySort;
 }
 const sortLabel = (c, i, n) => c.mini.abwaerts ? n - i : i + 1;
@@ -858,24 +860,25 @@ function sortHearts(c) {
 function sortLast(c) {
   const s = c.mini.sort, l = s.last; if (!l) return '';
   if (l.timeout) return `<div class="slast bad">${plabel(l.pid)}: Zeit abgelaufen, −1 ❤️</div>`;
-  const it = [...s.placed.filter(Boolean), ...s.pool].find(x => x.id === l.item);
-  return `<div class="slast ${l.ok ? 'ok' : 'bad'}">${plabel(l.pid)} setzt „${esc(it ? it.text || 'Bild' : '?')}“ auf Platz ${sortLabel(c, l.slot, s.n)}: ${l.ok ? 'richtig ✓' : 'falsch, −1 ❤️'}</div>`;
+  const all = [...s.line, ...s.pool], name = id => { const it = all.find(x => x.id === id); return it ? (it.text || 'Bild') : '?'; };
+  return `<div class="slast ${l.ok ? 'ok' : 'bad'}">${plabel(l.pid)}: „${esc(name(l.item))}“ ${l.side === 'left' ? 'links' : 'rechts'} von „${esc(name(l.ref))}“ – ${l.ok ? 'richtig ✓' : 'falsch, −1 ❤️'}</div>`;
 }
-// Gemeinsames Brett: alle sehen es live, nur wer dran ist darf waehlen (spectate = Spielleiter schaut nur zu)
+// Alle sehen die Reihe live, nur wer dran ist darf waehlen (spectate = Zuschauer wie Spielleiter oder Kaffeepause)
 function sortPlay(c, spectate) {
   const s = c.mini.sort;
   if (!s) return '<div class="status soft">Wird vorbereitet …</div>';
-  const m = sortSel(c), myTurn = !spectate && c.state === 'open' && !!me && s.turn === me.pid;
-  const lastSlot = s.last && s.last.ok ? s.last.slot : -1;
-  const slots = s.placed.map((it, i) => it
-    ? `<div class="sslot filled ${i === lastSlot ? 'new' : ''}"><span class="snum">${sortLabel(c, i, s.n)}</span>${sortCard(it)}${i === s.start ? '<span class="sstart">Start</span>' : ''}</div>`
-    : `<button class="sslot empty ${m.slot === i ? 'sel' : ''}" data-act="sslot" data-i="${i}" ${myTurn && m.item ? '' : 'disabled'}><span class="snum">${sortLabel(c, i, s.n)}</span></button>`).join('');
+  const m = sortSel(c), myTurn = !spectate && c.state === 'open' && !!me && s.turn === me.pid, canRef = myTurn && !!m.item;
+  const lastItem = s.last && s.last.ok ? s.last.item : null;
+  const line = s.line.map(it => `<button class="sslot filled ${it.id === lastItem ? 'new' : ''} ${m.ref === it.id ? 'sel' : ''}" data-act="sref" data-id="${it.id}" ${canRef ? '' : 'disabled'}>${sortCard(it)}${it.id === s.startItem ? '<span class="sstart">Start</span>' : ''}</button>`).join('');
   const pool = s.pool.map(it => `<div class="sitemwrap"><button class="sitem ${m.item === it.id ? 'sel' : ''}" data-act="sitem" data-id="${it.id}" ${myTurn ? '' : 'disabled'}>${sortCard(it)}</button>${it.bild ? `<button class="ghost szoom" data-act="zoomimg" data-src="${esc(toUrl(it.bild))}" title="Bild vergrößern">🔍</button>` : ''}</div>`).join('');
+  const ready = !!(m.item && m.ref);
+  const hint = !m.item ? 'Erst einen Gegenstand aus dem Pool wählen.' : !m.ref ? 'Dann einen liegenden Gegenstand antippen.' : 'Liegt er links oder rechts davon?';
   return `<div class="sortbox">${sortHearts(c)}${sortLast(c)}
     ${c.mini.anfang || c.mini.ende ? `<div class="sends"><span>${esc(c.mini.anfang || '')}</span><span>${esc(c.mini.ende || '')}</span></div>` : ''}
-    <div class="sboard">${slots}</div>
+    <div class="sboard">${line}</div>
+    <div class="muted">${s.line.length} von ${s.n} liegen${s.streng ? ' · Er muss direkt neben dem gewählten liegen (kein anderer dazwischen).' : ''}</div>
     ${s.pool.length ? `<div class="muted" style="margin-top:6px">Noch zu platzieren:</div><div class="spool">${pool}</div>` : ''}
-    ${myTurn ? `<div class="row"><button data-act="splace" ${m.item && m.slot != null ? '' : 'disabled'}>Hier platzieren</button><span class="muted">${m.item ? (m.slot != null ? '' : 'Jetzt einen freien Platz wählen.') : 'Erst einen Gegenstand wählen.'}</span></div>` : ''}</div>`;
+    ${myTurn ? `<div class="row"><button class="ghost" data-act="splace" data-side="left" ${ready ? '' : 'disabled'}>◀ Links davon</button><button data-act="splace" data-side="right" ${ready ? '' : 'disabled'}>Rechts davon ▶</button><span class="muted">${hint}</span></div>` : ''}</div>`;
 }
 function showZoom(src) { const o = document.createElement('div'); o.className = 'zoomov'; o.innerHTML = `<img src="${esc(src)}" alt="">`; o.onclick = () => o.remove(); document.body.appendChild(o); }
 function matchPlay(c) {
@@ -1252,8 +1255,8 @@ document.addEventListener('click', e => {
     case 'dismiss': socket.emit('host:dismiss'); break;
     case 'color': look.color = +d.i; localStorage.setItem('quiz-look', JSON.stringify(look)); if (me && me.role === 'player') socket.emit('player:look', look); render(); break;
     case 'sitem': mySort.item = mySort.item === d.id ? null : d.id; render(); break;
-    case 'sslot': mySort.slot = mySort.slot === +d.i ? null : +d.i; render(); break;
-    case 'splace': if (mySort.item != null && mySort.slot != null) { socket.emit('player:sortPlace', { item: mySort.item, slot: mySort.slot }); mySort.item = null; mySort.slot = null; render(); } break;
+    case 'sref': mySort.ref = mySort.ref === d.id ? null : d.id; render(); break;
+    case 'splace': if (mySort.item && mySort.ref && (d.side === 'left' || d.side === 'right')) { socket.emit('player:sortPlace', { item: mySort.item, ref: mySort.ref, side: d.side }); mySort.item = null; mySort.ref = null; render(); } break;
     case 'sortskip': socket.emit('host:sortSkip'); break;
     case 'zoomimg': showZoom(d.src); break;
     case 'mleft': { const m = myMini; if (!m || m.done) break; m.sel = m.sel === d.id ? null : d.id; render(); break; }

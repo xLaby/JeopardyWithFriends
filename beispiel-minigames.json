@@ -88,7 +88,8 @@
           "anfang": "älteste",
           "ende": "neueste",
           "zeit": 25,
-          "joker": true
+          "joker": true,
+          "streng": true
         }
       ]
     },

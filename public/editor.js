@@ -23,7 +23,7 @@ const safeName = n => {
 const MINI_T = ['sortieren', 'zuordnen', 'geo'], MAX_ITEMS = 10;
 const emptyItem = () => ({ text: '', bild: '', info: '', start: false });
 const emptyQ = () => ({ frage: '', antwort: '', typ: 'buzzer', einheit: '', zeit: 0, dauer: 20, joker: false, bild: '', sound: '', antwortBild: '',
-  items: [], paare: [], anfang: '', ende: '', herzen: 0, abwaerts: false, karte: '', aspekt: 1, ziel: { x: '', y: '' } });
+  items: [], paare: [], anfang: '', ende: '', herzen: 0, abwaerts: false, streng: false, karte: '', aspekt: 1, ziel: { x: '', y: '' } });
 const itemFilled = it => !!(it && ((it.text || '').trim() || it.bild));
 const miniFilled = q => MINI_T.includes(q.typ) && ((q.items || []).some(itemFilled) || (q.paare || []).some(p => itemFilled(p.links) || itemFilled(p.rechts)) || !!q.karte || !!(q.ziel && q.ziel.x !== '' && q.ziel.y !== '' && q.ziel.x != null));
 const isEmpty = q => !q.frage && !q.antwort && !q.bild && !q.sound && !miniFilled(q);
@@ -104,7 +104,7 @@ function normQ(q) {
     items: (Array.isArray(q.items) ? q.items : []).slice(0, MAX_ITEMS).map(normItem),
     paare: (Array.isArray(q.paare) ? q.paare : []).slice(0, MAX_ITEMS).map(p => ({ links: normItem(p && p.links), rechts: normItem(p && p.rechts) })),
     anfang: s(q.anfang, 30), ende: s(q.ende, 30),
-    herzen: num(q.herzen), abwaerts: !!q.abwaerts, karte: mediaRef(q.karte),
+    herzen: num(q.herzen), abwaerts: !!q.abwaerts, streng: !!q.streng, karte: mediaRef(q.karte),
     aspekt: Number(q.aspekt) >= 0.2 && Number(q.aspekt) <= 5 ? Number(q.aspekt) : 1,
     ziel: { x: q.ziel && q.ziel.x != null && q.ziel.x !== '' && Number.isFinite(Number(q.ziel.x)) ? Number(q.ziel.x) : '', y: q.ziel && q.ziel.y != null && q.ziel.y !== '' && Number.isFinite(Number(q.ziel.y)) ? Number(q.ziel.y) : '' }
   };
@@ -149,6 +149,7 @@ function cleanQ(q, finale) {
     if (q.ende.trim()) o.ende = q.ende.trim();
     if (q.herzen > 0 && q.herzen !== 3) o.herzen = q.herzen;
     if (q.abwaerts) o.abwaerts = true;
+    if (q.streng) o.streng = true;
   }
   if (!finale && q.typ === 'zuordnen') o.paare = q.paare.filter(p => itemFilled(p.links) && itemFilled(p.rechts)).map(p => ({ links: it(p.links), rechts: it(p.rechts) }));
   if (!finale && q.typ === 'geo') {
@@ -558,11 +559,12 @@ function itemMedia(ci, ri, path, val) {
 function miniEditor(ci, ri, q, typ) {
   const at = `data-ci="${ci}" data-ri="${ri}"`;
   if (typ === 'sortieren') {
-    return `<div class="minied"><div class="muted">Elemente in der <b>richtigen Reihenfolge</b> eintragen (links beginnt Platz 1). Die Spieler setzen sie reihum auf ein gemeinsames Brett, wer falsch setzt, verliert ein Herz. Der optionale <b>Wert</b> (z. B. „43 Todesfälle“) wird sichtbar, sobald ein Element richtig liegt. Mit <b>Start</b> bestimmst du das Element, das von Anfang an auf dem Brett liegt (sonst zufällig). Text, Bild oder beides.</div>
+    return `<div class="minied"><div class="muted">Elemente in der <b>richtigen Reihenfolge</b> eintragen (links beginnt Platz 1). Die Spieler legen sie reihum in eine wachsende Reihe: einen Gegenstand wählen, einen schon liegenden antippen und „links“ oder „rechts davon“ sagen. Wer falsch liegt, verliert ein Herz. Der optionale <b>Wert</b> (z. B. „43 Todesfälle“) wird sichtbar, sobald ein Element richtig liegt. Mit <b>Start</b> bestimmst du das Element, das von Anfang an liegt (sonst zufällig). Text, Bild oder beides.</div>
       <div class="two"><label class="field">Beschriftung links (z. B. wenigste)<input type="text" data-ip="anfang" ${at} maxlength="30" value="${esc(q.anfang)}"></label>
       <label class="field">Beschriftung rechts (z. B. meiste)<input type="text" data-ip="ende" ${at} maxlength="30" value="${esc(q.ende)}"></label></div>
       <div class="two"><label class="field">Herzen pro Spieler (leer = 3)<input type="text" inputmode="numeric" data-f="herzen" ${at} value="${q.herzen || ''}"></label>
-      <label class="chk" style="align-self:flex-end"><input type="checkbox" data-f="abwaerts" ${at} ${q.abwaerts ? 'checked' : ''}> Plätze rückwärts nummerieren (z. B. 10 … 1)</label></div>
+      <div style="align-self:flex-end;display:grid;gap:6px"><label class="chk"><input type="checkbox" data-f="streng" ${at} ${q.streng ? 'checked' : ''}> Schwerer: Gegenstand muss <b>direkt neben</b> dem gewählten liegen</label>
+      <label class="chk"><input type="checkbox" data-f="abwaerts" ${at} ${q.abwaerts ? 'checked' : ''}> Nummern in der Auflösung rückwärts (z. B. 10 … 1)</label></div></div>
       ${q.items.map((it, i) => `<div class="irow"><span class="inum">${i + 1}</span><input type="text" data-ip="items.${i}.text" ${at} maxlength="80" placeholder="Begriff" value="${esc(it.text)}"><input type="text" class="iinfo" data-ip="items.${i}.info" ${at} maxlength="40" placeholder="Wert (optional)" value="${esc(it.info)}">${itemMedia(ci, ri, 'items.' + i + '.bild', it.bild)}
         <label class="chk sm" title="Dieses Element liegt am Anfang schon auf dem Brett"><input type="checkbox" data-ip="items.${i}.start" ${at} ${it.start ? 'checked' : ''}> Start</label>
         <span class="ibtns"><button class="ghost sm" data-act="itemmove" ${at} data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''}>▲</button><button class="ghost sm" data-act="itemmove" ${at} data-i="${i}" data-d="1" ${i === q.items.length - 1 ? 'disabled' : ''}>▼</button><button class="ghost sm" data-act="itemdel" ${at} data-i="${i}">✕</button></span></div>`).join('')}
@@ -631,7 +633,7 @@ document.addEventListener('change', e => {
     save(); render();
   }
   else if (el.dataset.f === 'joker') { qAt(ciOf(el), +el.dataset.ri).joker = el.checked; save(); refreshChecks(); }
-  else if (el.dataset.f === 'abwaerts') { qAt(ciOf(el), +el.dataset.ri).abwaerts = el.checked; save(); refreshChecks(); }
+  else if (el.dataset.f === 'abwaerts' || el.dataset.f === 'streng') { qAt(ciOf(el), +el.dataset.ri)[el.dataset.f] = el.checked; save(); refreshChecks(); }
   else if (el.dataset.ip !== undefined && el.type === 'checkbox') {   // Start-Gegenstand: nur einer pro Frage
     const q = qAt(ciOf(el), +el.dataset.ri), i = +/^items\.(\d+)\.start$/.exec(el.dataset.ip)[1];
     q.items.forEach((it, k) => { it.start = k === i && el.checked; });
