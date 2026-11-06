@@ -1,7 +1,9 @@
 const socket = io();
 const $app = document.getElementById('app');
 const LS = 'quiz-session';
-let me = JSON.parse(localStorage.getItem(LS) || 'null'); // {role, code, token, pid, name}
+const BEAMER = document.documentElement.hasAttribute('data-beamer');   // beamer.html: reiner Zuschauer fuer Fernseher oder Stream
+const beamerCode = (new URLSearchParams(location.search).get('code') || '').toUpperCase();
+let me = BEAMER ? (beamerCode ? { role: 'beamer', code: beamerCode } : null) : JSON.parse(localStorage.getItem(LS) || 'null'); // {role, code, token, pid, name}
 let S = null, startError = '', coffeePick = false, draft = '', lastCardKey = '', cardFresh = false;
 let muted = localStorage.getItem('quiz-mute') === '1';
 let audioBlocked = false, lastAudioKey = '', previewing = false, mediaStop = null;
@@ -29,7 +31,7 @@ let lookOpen = false;
 const seenNotices = new Set();
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const save = () => me ? localStorage.setItem(LS, JSON.stringify(me)) : localStorage.removeItem(LS);
+const save = () => BEAMER ? 0 : me ? localStorage.setItem(LS, JSON.stringify(me)) : localStorage.removeItem(LS);   // der Beamer merkt sich nichts (sonst wuerde er die Sitzung des Browsers ueberschreiben)
 const save2 = save;
 const pname = id => { const p = S && S.players.find(x => x.id === id); return p ? p.name : '?'; };
 const pOf = id => S && S.players.find(x => x.id === id);
@@ -204,6 +206,7 @@ setInterval(() => { if (me) fetch('/ping').catch(() => {}); }, 5 * 60 * 1000);
 /* ---------- Verbindung ---------- */
 function tryRejoin() {
   if (!me) return;
+  if (me.role === 'beamer') return socket.emit('beamer:join', { code: me.code }, r => { if (!r.ok) { startError = r.error || 'Raum nicht gefunden.'; me = null; S = null; } render(); });
   const done = r => { if (!r.ok) { lastSession = me; startError = 'Deine Sitzung wurde nicht gefunden (Server neu gestartet?). Mit Code und Namen erneut beitreten – dein Platz und deine Punkte bleiben erhalten.'; me = null; S = null; save(); render(); } };
   if (me.role === 'host') socket.emit('host:rejoin', { code: me.code, token: me.token }, done);
   else socket.emit('player:join', { code: me.code, token: me.token, photo: myPhoto }, done);
@@ -330,9 +333,9 @@ function render() {
   cardFresh = !!key && key !== lastCardKey; lastCardKey = key;
   if (!key) draft = '';
 
-  if (!me) viewStart();
+  if (!me) BEAMER ? viewBeamerStart() : viewStart();
   else if (!S) $app.innerHTML = '<div class="wrap center muted">Verbinde …</div>';
-  else if (S.phase === 'lobby') me.role === 'host' ? viewHostLobby() : viewPlayerLobby();
+  else if (S.phase === 'lobby') BEAMER ? viewBeamerLobby() : me.role === 'host' ? viewHostLobby() : viewPlayerLobby();
   else if (S.phase === 'game') viewGame();
   else if (S.phase === 'finale') viewFinale();
   else viewEnd();
@@ -350,6 +353,7 @@ function render() {
   if (floats.length) { const ids = floats.map(f => f.id); setTimeout(() => { floats = floats.filter(f => !ids.includes(f.id)); document.querySelectorAll('.float').forEach(e => { if (ids.includes(e.dataset.fid)) e.remove(); }); }, 1400); }
   drawPix();
   mountGeo();
+  if (BEAMER) fitBeamer();
 }
 
 function viewStart() {
@@ -501,6 +505,24 @@ function viewHostLobby() {
   document.getElementById('setc').onchange = e => socket.emit('host:setSettings', { comeback: e.target.value });
 }
 
+// Beamer: Code eingeben (oder per Link ?code=ABCD direkt verbinden)
+function viewBeamerStart() {
+  $app.innerHTML = `<div class="wrap stack center"><div class="logo">Quiz Show</div>
+    <div class="panel stack"><h2>Beamer-Ansicht</h2>
+      <p class="muted" style="margin:0">Zeigt das Spiel groß auf Fernseher oder Stream, ohne Lösungen und ohne Bedienung.</p>
+      <input type="text" id="bcode" placeholder="Raumcode" maxlength="4" autocapitalize="characters" autocomplete="off">
+      <div class="err" id="err">${esc(startError)}</div>
+      <button data-act="beamerjoin">Anzeigen</button></div></div>`;
+  startError = '';
+}
+function viewBeamerLobby() {
+  $app.innerHTML = `<div class="wrap stack center">
+    <div class="logo">${esc(S.titel)}</div>
+    <p class="muted" style="margin:0">Mitspielen unter <b>${esc(location.host)}</b> mit dem Code</p>
+    <div class="roomcode">${S.code}</div>
+    <div class="panel" style="text-align:left"><h2>Spieler (${S.players.length})</h2>${playerList()}</div>
+  </div>`;
+}
 function viewPlayerLobby() {
   $app.innerHTML = `
   <div class="wrap stack center">
@@ -579,6 +601,7 @@ function hud() {
       ${host && S.phase === 'game' && !S.current ? `<button class="ghost ${jokerMode ? 'on' : ''}" data-act="jokermode">${jokerMode ? 'Joker-Modus beenden' : 'Joker-Felder bearbeiten'}</button>` : ''}
       ${host && S.phase === 'game' && !S.current && S.finale ? '<button class="ghost" data-act="finale">Finale starten</button>' : ''}
       ${host && S.canUndo ? `<button class="ghost undo" data-act="undo" title="${esc(S.canUndo)}">↶ Rückgängig</button>` : ''}
+      ${host ? '<button class="ghost" data-act="beamer" title="Zuschauer-Ansicht für Fernseher oder Stream in neuem Tab öffnen">Beamer</button>' : ''}
       ${host ? '<button class="ghost" data-act="export" title="Spielstand als Datei herunterladen">Spielstand sichern</button>' : ''}
       <button class="ghost" data-act="mute">${muted ? 'Ton aus' : 'Ton an'}</button>
       ${host ? '<button class="ghost" data-act="end">Beenden</button>' : ''}</div></div>
@@ -730,6 +753,7 @@ function card() {
       if (c.typ === 'sortieren' && c.state === 'open') miniBox = sortPlay(c, true);   // beim Sortieren live zuschauen
     }
     else if (c.state === 'open' && !host && mine) miniBox = c.typ === 'sortieren' ? sortPlay(c, !c.mini.sort || !c.mini.sort.order.includes(me.pid)) : c.typ === 'zuordnen' ? matchPlay(c) : geoPlay(c);
+    else if (me.role === 'beamer' && c.state === 'open') miniBox = c.typ === 'sortieren' ? sortPlay(c, true) : c.typ === 'geo' ? '<div class="geobox"><div id="geoslot" class="geoslot"></div></div>' : '';
     else if (host && (c.state === 'reading' || c.state === 'open')) miniBox = hostMini(c);
     else if (c.state === 'reveal' && c.mini.result) miniBox = miniReveal(c);
   }
@@ -1219,6 +1243,8 @@ document.addEventListener('click', e => {
       });
       break;
     }
+    case 'beamer': window.open('/beamer.html?code=' + S.code, '_blank'); break;
+    case 'beamerjoin': { const code = document.getElementById('bcode').value.trim().toUpperCase(); if (code) { me = { role: 'beamer', code }; tryRejoin(); } break; }
     case 'copy': navigator.clipboard && navigator.clipboard.writeText(d.text); el.textContent = 'Kopiert'; break;
     case 'start': socket.emit('host:start'); break;
     case 'move': socket.emit('host:move', { id: d.id, dir: +d.dir }); break;
@@ -1297,3 +1323,15 @@ document.addEventListener('click', e => {
   }
 });
 render();
+
+/* ---------- Beamer: Zoom passend zur Fenstergroesse (Fernseher), nach jedem Neuaufbau, damit auch hohe Boards ganz auf den Schirm passen ---------- */
+function fitBeamer() {
+  const root = document.documentElement;
+  root.style.setProperty('--bz', Math.max(0.5, Math.min(innerWidth / 1280, innerHeight / 760)).toFixed(3));
+  for (let i = 0; i < 3; i++) {
+    const h = $app.getBoundingClientRect().height, avail = innerHeight - 6;
+    if (h <= avail) break;
+    root.style.setProperty('--bz', Math.max(0.5, parseFloat(root.style.getPropertyValue('--bz')) * avail / h).toFixed(3));
+  }
+}
+if (BEAMER) addEventListener('resize', fitBeamer);

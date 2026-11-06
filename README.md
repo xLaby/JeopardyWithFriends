@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 4.3
+# Quiz Show (Jeopardy-Stil) – Version 4.4
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -82,6 +82,13 @@ Bei Sortieren steht die **richtige Reihenfolge** in `items` (links nach rechts, 
 
 **Hinweis Karte:** Die Karte nutzt Leaflet (liegt im Projekt unter `public/vendor/leaflet`) und braucht keine Kartenkacheln aus dem Internet mehr, nur das Kartenbild selbst. Bei einem https-Link muss die Seite das Einbetten erlauben, sonst lieber das Bild hochladen.
 
+## Beamer-Ansicht
+Für Fernseher oder Stream: Der Spielleiter drückt oben auf **Beamer** und bekommt einen neuen Tab (`/beamer.html?code=ABCD`), den er auf den Fernseher zieht. Man kann die Adresse auch von Hand öffnen und den Raumcode eingeben.
+- Die Ansicht ist **nur zum Zuschauen**: Sie zeigt Lobby mit Code und Spielern, das Board, die Fragen, den Buzzer-Gewinner, Zeit, Auflösung, Mini-Games live (Sortieren, Karte bei Geoguessr), Finale und Siegerehrung.
+- Sie bekommt **nur den öffentlichen Zustand wie ein Spieler**: Fragen und Antworten erscheinen erst, wenn der Spielleiter sie freigibt bzw. auflöst, und Lösungen von Mini-Games bleiben verborgen. Bedienen kann man nichts, nur der Ton lässt sich umschalten.
+- Die Größe passt sich automatisch dem Fenster an, sodass auch ein Board mit 13 Spalten und 8 Stufen komplett auf den Bildschirm passt. Alle Designs funktionieren auch hier.
+- Es können beliebig viele Beamer gleichzeitig zuschauen.
+
 ## Code-Aufbau
 `server.js` ist nur der Einstiegspunkt (Express, Socket.io, Start). Die Spiellogik liegt in `lib/`:
 
@@ -103,17 +110,18 @@ Bei Sortieren steht die **richtige Reihenfolge** in `items` (links nach rechts, 
 Jedes Modul trägt seine Funktionen am Ende mit `hub.register({...})` ein und holt sich Funktionen aus anderen Modulen am Anfang über kleine Weiterleitungen (`const award = (...a) => hub.award(...a);`). So dürfen sich Module gegenseitig aufrufen, ohne dass sich das Laden im Kreis dreht. Wer in einem Modul eine Funktion eines anderen Moduls braucht, ergänzt diese Zeile; vergisst man es, meldet `npm run lint` den Fehler (`no-undef`).
 
 ## Tests
-`npm test` startet einen eigenen Server auf freiem Port und spielt mit Bot-Spielern alles Wichtige durch: Buzzer (Reaktionszeit, Sperre, Abzug), alle drei Joker, Rückgängig, Schätzfrage, Risiko, Spielstand sichern/laden, Finale (Entscheidung, Einsatz, Auswertung), außerdem Sortieren (Links/Rechts-Regel, strenger Modus, Herzen, Zeit, Ausfall und Entfernen von Spielern), Zuordnen und Geoguessr (nur der Nächste bekommt Punkte). Einzelne Datei: `npm test minigames`. `npm run lint` prüft den Code statisch.
+`npm test` startet einen eigenen Server auf freiem Port und spielt mit Bot-Spielern alles Wichtige durch: Buzzer (Reaktionszeit, Sperre, Abzug), alle drei Joker, Rückgängig, Schätzfrage, Risiko, Spielstand sichern/laden, Finale (Entscheidung, Einsatz, Auswertung), außerdem Sortieren (Links/Rechts-Regel, strenger Modus, Herzen, Zeit, Ausfall und Entfernen von Spielern), Zuordnen und Geoguessr (nur der Nächste bekommt Punkte). Dazu kommen die Beamer-Rolle (keine Lösungen, keine Steuerung) und die Design-Auswahl. Einzelne Datei: `npm test minigames`. `npm run lint` prüft den Code statisch.
 
 Bei jedem Push läuft beides automatisch über GitHub Actions (`.github/workflows/test.yml`, Node 18, 20 und 22). Neue Regeln am besten gleich mit einem Test in `test/` absichern.
 
 ## Designs
-In der Lobby gibt es ein Panel **Design**. Jedes Design ändert nicht nur die Farben, sondern das ganze Grunddesign: Schrift, Formen, Hintergrund, Animationen sowie das Layout von Board und Buzzer.
+In der Lobby gibt es ein Panel **Design**. Jedes Design ändert nicht nur die Farben, sondern das ganze Grunddesign: Schrift, Formen, Hintergrund, Animationen sowie das Layout von Board und Buzzer. Seit 4.4 gibt es vier Designs:
 - **Showbühne** (Standard): Vorhang, Scheinwerfer, Lichterrahmen, runder Buzzer.
-- **Retro-Arcade:** 8-Bit mit Pixel-Schrift, Scanlines, eckiges Board mit blinkenden Feldern, Pixel-Buzzer.
-- **Sci-Fi Hologramm:** Neon-Linien, Sternenhimmel mit Raster, Datenleisten als Kategorien, abgeschrägte Felder, Hexagon-Buzzer, Frage klappt als Hologramm auf.
-- **Comic Pop-Art:** dicke Umrandungen, Rasterpunkte, leicht gekippte Panels, Starburst-Buzzer.
-- **Anime:** Pastell mit Sternchen, Bubble-Board, Frage als Visual-Novel-Textbox am unteren Rand, Herz-Buzzer.
+- **Neon:** Leuchtröhren auf dunkler Backsteinwand. Neon-Rahmen in Cyan und Pink, Fragekarte mit doppeltem Neon-Rahmen und Fragezeichen-Blase, runder Neon-Buzzer.
+- **Rot / Future:** Dunkles Rot mit orangem Text, kantige Rahmen mit abgeschrägten Ecken, Chevron-Knöpfe, achteckiger Buzzer.
+- **Prime-Time:** Dunkelblau mit Punktraster, Sechseck-Fragekarte, runde Pillen für Felder und Spieler, leuchtender blauer Buzzer, im Stil großer TV-Quizshows.
+
+Die früheren Designs (Arcade, Sci-Fi, Comic, Anime) gibt es nicht mehr. In älteren Spielständen fällt ihr Design automatisch auf die Showbühne zurück.
 
 Der Spielleiter wählt, das Design gilt sofort für alle im Raum und wird beim Spielstand sichern mitgespeichert. Geändert werden kann es nur in der Lobby.
 
