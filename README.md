@@ -1,4 +1,4 @@
-# Quiz Show (Jeopardy-Stil) – Version 4.4
+# Quiz Show (Jeopardy-Stil) – Version 4.5
 
 Ein Spielleiter leitet das Spiel, Spieler treten im Browser mit Raumcode bei. Es muss nichts heruntergeladen werden.
 Board: bis zu 15 Kategorien × 10 Stufen, Punktwerte frei wählbar (Standard 100 bis 800).
@@ -82,6 +82,16 @@ Bei Sortieren steht die **richtige Reihenfolge** in `items` (links nach rechts, 
 
 **Hinweis Karte:** Die Karte nutzt Leaflet (liegt im Projekt unter `public/vendor/leaflet`) und braucht keine Kartenkacheln aus dem Internet mehr, nur das Kartenbild selbst. Bei einem https-Link muss die Seite das Einbetten erlauben, sonst lieber das Bild hochladen.
 
+## Team-Modus
+In der Lobby beim Spielleiter gibt es das Panel **Teams**. Mit „Team-Modus“ gründen die Spieler beim Beitritt ein Team oder treten einem bestehenden bei: Nach Eingabe des Raumcodes erscheint ein Feld **Teamname**. Gibt es den Namen schon (egal ob groß oder klein geschrieben), tritt man bei, sonst gründet man ein neues Team und wählt dafür Farbe und Avatar. Es gibt beliebig viele Teams (bis 30) mit bis zu 12 Mitgliedern, auch unterschiedlich groß. Ohne Team-Modus ist jeder Spieler ein Team mit einem Mitglied, das Spiel läuft dann wie vorher.
+- **Gemeinsam:** Ein Team hat **einen** Punktestand, **eigene Joker**, eine gemeinsame Streak und tritt wie ein Spieler in Feldwahl, Mini-Games und Finale auf. Jedes Mitglied hat ein eigenes Gerät und kann sich nach einem Verbindungsabbruch wieder verbinden. Neue Mitglieder können auch noch während des Spiels einem bestehenden Team beitreten.
+- **Antwortmodus „Alle im Team dürfen buzzern“:** Jedes Mitglied kann buzzern, der **schnellste Buzz im Team** zählt für das Team. Liegt das Team falsch, ist das **ganze Team** für die Frage gesperrt.
+- **Antwortmodus „Reihum“:** Pro Frage darf nur **ein Mitglied** für das Team antworten (Buzzer, Schätzung, Mini-Game), danach ist das nächste dran. So kommt jeder gleich oft an die Reihe. Der Antwortgeber ist mit 🎤 markiert, die anderen sehen „NICHT DU“ und schauen zu (beim Sortieren sehen sie das Brett live). Ist der Antwortgeber nicht verbunden, springt das nächste verbundene Mitglied ein. Joker, Feldwahl und Finaleinsatz bleiben Teamentscheidungen und stehen allen offen.
+- **Spielleiter:** In der Lobby kann man einzelne Mitglieder per ✕ entfernen, das letzte Mitglied entfernt das ganze Team. Der Spielstand speichert Teams und Mitglieder, ein Mitglied holt sich nach dem Laden seinen Platz mit Teamname und Namen zurück.
+
+## Leertaste
+Auf dem Rechner löst die **Leertaste** den Buzzer aus, genau wie ein Klick (mit derselben „zu früh“-Sperre). In Eingabefeldern (z. B. bei der Schätzung) hat die Leertaste ihre normale Funktion.
+
 ## Beamer-Ansicht
 Für Fernseher oder Stream: Der Spielleiter drückt oben auf **Beamer** und bekommt einen neuen Tab (`/beamer.html?code=ABCD`), den er auf den Fernseher zieht. Man kann die Adresse auch von Hand öffnen und den Raumcode eingeben.
 - Die Ansicht ist **nur zum Zuschauen**: Sie zeigt Lobby mit Code und Spielern, das Board, die Fragen, den Buzzer-Gewinner, Zeit, Auflösung, Mini-Games live (Sortieren, Karte bei Geoguessr), Finale und Siegerehrung.
@@ -110,7 +120,7 @@ Für Fernseher oder Stream: Der Spielleiter drückt oben auf **Beamer** und beko
 Jedes Modul trägt seine Funktionen am Ende mit `hub.register({...})` ein und holt sich Funktionen aus anderen Modulen am Anfang über kleine Weiterleitungen (`const award = (...a) => hub.award(...a);`). So dürfen sich Module gegenseitig aufrufen, ohne dass sich das Laden im Kreis dreht. Wer in einem Modul eine Funktion eines anderen Moduls braucht, ergänzt diese Zeile; vergisst man es, meldet `npm run lint` den Fehler (`no-undef`).
 
 ## Tests
-`npm test` startet einen eigenen Server auf freiem Port und spielt mit Bot-Spielern alles Wichtige durch: Buzzer (Reaktionszeit, Sperre, Abzug), alle drei Joker, Rückgängig, Schätzfrage, Risiko, Spielstand sichern/laden, Finale (Entscheidung, Einsatz, Auswertung), außerdem Sortieren (Links/Rechts-Regel, strenger Modus, Herzen, Zeit, Ausfall und Entfernen von Spielern), Zuordnen und Geoguessr (nur der Nächste bekommt Punkte). Dazu kommen die Beamer-Rolle (keine Lösungen, keine Steuerung) und die Design-Auswahl. Einzelne Datei: `npm test minigames`. `npm run lint` prüft den Code statisch.
+`npm test` startet einen eigenen Server auf freiem Port und spielt mit Bot-Spielern alles Wichtige durch: Buzzer (Reaktionszeit, Sperre, Abzug), alle drei Joker, Rückgängig, Schätzfrage, Risiko, Spielstand sichern/laden, Finale (Entscheidung, Einsatz, Auswertung), außerdem Sortieren (Links/Rechts-Regel, strenger Modus, Herzen, Zeit, Ausfall und Entfernen von Spielern), Zuordnen und Geoguessr (nur der Nächste bekommt Punkte). Dazu kommen die Beamer-Rolle (keine Lösungen, keine Steuerung), die Design-Auswahl und der Team-Modus (Beitritt, beide Antwortmodi, Wiederverbinden, Spielstand). Einzelne Datei: `npm test minigames`. `npm run lint` prüft den Code statisch.
 
 Bei jedem Push läuft beides automatisch über GitHub Actions (`.github/workflows/test.yml`, Node 18, 20 und 22). Neue Regeln am besten gleich mit einem Test in `test/` absichern.
 

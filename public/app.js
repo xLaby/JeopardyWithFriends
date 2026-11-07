@@ -359,6 +359,8 @@ function render() {
 function viewStart() {
   const code = new URLSearchParams(location.search).get('code') || (lastSession && lastSession.code) || '';
   const name = lastSession && lastSession.name ? lastSession.name : '';
+  draftTeam = lastSession && lastSession.team ? lastSession.team : '';
+  joinInfo = null; joinLookup = '';
   $app.innerHTML = `
   <div class="wrap stack">
     <div class="logo">Quiz Show</div>
@@ -366,7 +368,8 @@ function viewStart() {
       <h2>Mitspielen</h2>
       <input type="text" id="jcode" placeholder="Raumcode" maxlength="4" autocapitalize="characters" autocomplete="off" value="${esc(code.toUpperCase())}">
       <input type="text" id="jname" placeholder="Dein Name" maxlength="20" autocomplete="nickname" value="${esc(name)}">
-      ${lookPicker()}
+      <div id="teamsec" class="stack"></div>
+      <div id="lookwrap">${lookPicker()}</div>
       <div class="err" id="err">${esc(startError)}</div>
       <button data-act="join">Beitreten</button>
     </div>
@@ -378,6 +381,35 @@ function viewStart() {
     <p class="center"><a href="/editor.html">Fragen-Editor öffnen</a></p>
   </div>`;
   startError = '';
+  lookupRoom();
+}
+// Team-Modus: nach Eingabe des Raumcodes beim Server nachsehen, ob es Teams gibt (Teamname wird dann abgefragt)
+let joinInfo = null, joinLookup = '', draftTeam = '';
+function lookupRoom() {
+  const c = ((document.getElementById('jcode') || {}).value || '').trim().toUpperCase();
+  if (c.length !== 4) { joinInfo = null; joinLookup = ''; return renderTeamSec(); }
+  if (c === joinLookup) return;
+  joinLookup = c;
+  socket.emit('room:info', { code: c }, r => { joinInfo = r && r.ok ? r : null; renderTeamSec(); });
+}
+function renderTeamSec() {
+  const box = document.getElementById('teamsec'), look = document.getElementById('lookwrap');
+  if (!box) return;
+  if (!joinInfo || !joinInfo.teamMode) { box.innerHTML = ''; if (look) look.style.display = ''; return; }
+  const cur = (document.getElementById('jteam') || {}).value || draftTeam;
+  box.innerHTML = `<input type="text" id="jteam" placeholder="Teamname (neu gründen oder beitreten)" maxlength="20" autocomplete="off" value="${esc(cur)}">
+    ${joinInfo.teams.length ? `<div class="teamchips">${joinInfo.teams.map(t => `<button class="ghost sm" data-act="pickteam" data-name="${esc(t.name)}" ${t.full ? 'disabled' : ''}>${esc(t.name)} · ${t.size}</button>`).join('')}</div>` : ''}
+    <div class="muted" id="teamhint"></div>`;
+  updateTeamHint();
+}
+function updateTeamHint() {
+  const inp = document.getElementById('jteam'), hint = document.getElementById('teamhint'), look = document.getElementById('lookwrap');
+  if (!inp || !hint) return;
+  const v = inp.value.trim().toLowerCase(), ex = joinInfo && joinInfo.teams.find(t => t.name.toLowerCase() === v);
+  hint.textContent = !v ? 'Gib einen Teamnamen ein oder tippe ein bestehendes Team an.'
+    : ex ? `Du trittst dem Team „${ex.name}“ bei (${ex.size} ${ex.size === 1 ? 'Mitglied' : 'Mitglieder'}).`
+    : 'Du gründest ein neues Team. Farbe und Avatar wählst du unten für das ganze Team.';
+  if (look) look.style.display = ex ? 'none' : '';
 }
 
 function lookPicker() {
@@ -394,16 +426,19 @@ function lookPicker() {
     <div class="err" id="photoerr"></div>
   </div>`;
 }
+// Teammitglieder als kleine Zeile (nur bei Teams mit mehr als einem Mitglied oder im Team-Modus); der Antwortgeber ("reihum") ist hervorgehoben
+const memLine = p => (p.members.length > 1 || S.settings.teamMode) ? `<small class="mem">${p.members.map(m => `<span class="${m.on ? '' : 'offm'}">${m.id === p.ans ? '🎤 <strong>' + esc(m.name) + '</strong>' : esc(m.name)}</span>`).join(' · ')}</small>` : '';
+const teamWord = () => S.settings.teamMode ? 'Teams' : 'Spieler';
 function playerList() {
   if (!S.players.length) return '<p class="muted">Noch niemand im Raum.</p>';
   return '<ul class="plist">' + S.players.map((p, i) => `
-    <li><span><span class="dot ${p.connected ? '' : 'off'}"></span>${i + 1}. ${plabel(p.id)}</span></li>`).join('') + '</ul>';
+    <li><span><span class="dot ${p.connected ? '' : 'off'}"></span>${i + 1}. ${plabel(p.id)}${memLine(p)}</span></li>`).join('') + '</ul>';
 }
 function hostPlayerList() {
   if (!S.players.length) return '<p class="muted">Noch niemand im Raum.</p>';
   const n = S.players.length;
   return '<ul class="plist">' + S.players.map((p, i) => `
-    <li><span><span class="dot ${p.connected ? '' : 'off'}"></span>${i + 1}. ${plabel(p.id)}</span>
+    <li><span><span class="dot ${p.connected ? '' : 'off'}"></span>${i + 1}. ${plabel(p.id)}${p.members.length > 1 ? `<small class="mem">${p.members.map(m => `<span class="${m.on ? '' : 'offm'}">${esc(m.name)}<button class="ghost sm x" data-act="kickm" data-id="${p.id}" data-mid="${m.id}" title="Aus dem Team entfernen">✕</button></span>`).join(' ')}</small>` : memLine(p)}</span>
     <span class="row">
       <button class="ghost sm" data-act="move" data-id="${p.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="Nach oben">▲</button>
       <button class="ghost sm" data-act="move" data-id="${p.id}" data-dir="1" ${i === n - 1 ? 'disabled' : ''} title="Nach unten">▼</button>
@@ -426,7 +461,7 @@ function viewHostLobby() {
           <div class="row" style="justify-content:center"><code style="word-break:break-all">${esc(link)}</code>
           <button class="ghost" data-act="copy" data-text="${esc(link)}">Link kopieren</button></div>
         </div>
-        <div class="panel"><h2>Spieler (${S.players.length})</h2>
+        <div class="panel"><h2>${teamWord()} (${S.players.length})</h2>
           <p class="muted" style="margin:0 0 8px">Die Reihenfolge hier ist die Zugreihenfolge im Spiel.</p>${hostPlayerList()}</div>
       </div>
       <div class="stack">
@@ -448,6 +483,13 @@ function viewHostLobby() {
           <h2>Design</h2>
           <div class="muted">Das Design gilt für alle im Raum und lässt sich nur hier in der Lobby ändern.</div>
           <div class="themes">${(S.themes || []).map(t => `<button class="ghost themeb ${S.settings.theme === t.id ? 'on' : ''}" data-act="theme" data-id="${t.id}" aria-pressed="${S.settings.theme === t.id}"><span class="tp" style="background:linear-gradient(90deg,${t.c[0]} 0 34%,${t.c[1]} 34% 67%,${t.c[2]} 67%)"></span><b>${esc(t.name)}</b><small>${esc(t.d || '')}</small></button>`).join('')}</div>
+        </div>
+        <div class="panel stack">
+          <h2>Teams</h2>
+          <label class="chk"><input type="checkbox" id="sett" ${S.settings.teamMode ? 'checked' : ''}> Team-Modus: Beim Beitritt gründen die Spieler ein Team oder wählen eines (beliebig viele Teams, beliebig groß)</label>
+          ${S.settings.teamMode ? `<div class="muted">Wie antwortet ein Team?</div>
+          <label class="chk"><input type="radio" name="tans" value="alle" ${S.settings.teamAnswer !== 'reihum' ? 'checked' : ''}> Alle im Team dürfen buzzern, der Schnellste zählt</label>
+          <label class="chk"><input type="radio" name="tans" value="reihum" ${S.settings.teamAnswer === 'reihum' ? 'checked' : ''}> Reihum: Pro Frage antwortet ein Mitglied, danach das nächste</label>` : ''}
         </div>
         <div class="panel stack">
           <h2>Einstellungen</h2>
@@ -499,6 +541,8 @@ function viewHostLobby() {
         }).catch(() => err('Laden fehlgeschlagen.'));
     });
   };
+  document.getElementById('sett').onchange = e => socket.emit('host:setSettings', { teamMode: e.target.checked });
+  document.querySelectorAll('input[name="tans"]').forEach(r => { r.onchange = () => socket.emit('host:setSettings', { teamAnswer: r.value }); });
   document.getElementById('setj').onchange = e => socket.emit('host:setSettings', { joker: e.target.value });
   document.getElementById('seta').onchange = e => socket.emit('host:setSettings', { answerTime: e.target.value });
   document.getElementById('setg').onchange = e => socket.emit('host:setSettings', { guessTime: e.target.value });
@@ -520,16 +564,16 @@ function viewBeamerLobby() {
     <div class="logo">${esc(S.titel)}</div>
     <p class="muted" style="margin:0">Mitspielen unter <b>${esc(location.host)}</b> mit dem Code</p>
     <div class="roomcode">${S.code}</div>
-    <div class="panel" style="text-align:left"><h2>Spieler (${S.players.length})</h2>${playerList()}</div>
+    <div class="panel" style="text-align:left"><h2>${teamWord()} (${S.players.length})</h2>${playerList()}</div>
   </div>`;
 }
 function viewPlayerLobby() {
   $app.innerHTML = `
   <div class="wrap stack center">
     <div class="logo">${esc(S.titel)}</div>
-    <h2>Du bist drin, ${esc(me.name)}</h2>
+    <h2>Du bist drin, ${esc(me.name)}${S.settings.teamMode && me.team ? ` – Team ${esc(me.team)}` : ''}</h2>
     <p class="muted">Raum ${S.code}. Warte, bis der Spielleiter das Spiel startet.<br>Schalte den Ton an, es gibt Sounds.</p>
-    <div class="panel" style="text-align:left"><h2>Spieler (${S.players.length})</h2>${playerList()}</div>
+    <div class="panel" style="text-align:left"><h2>${teamWord()} (${S.players.length})</h2>${playerList()}</div>
     <div class="panel" style="text-align:left"><button class="ghost" data-act="looktoggle">${lookOpen ? 'Fertig' : 'Farbe und Avatar ändern'}</button>${lookOpen ? lookPicker() : ''}</div>
     <button class="ghost" data-act="leave">Raum verlassen</button>
   </div>`;
@@ -547,7 +591,7 @@ function chips() {
   return '<div class="chips">' + S.players.map(p => {
     const cls = `chip ${S.picker === p.id ? 'turn' : ''} ${p.connected ? '' : 'off'} ${p.id === me.pid ? 'me' : ''} ${menuFor === p.id ? 'turn' : ''}`;
     const fl = floats.filter(f => f.pid === p.id).map(f => `<span class="float ${f.delta > 0 ? 'plus' : 'minus'}" data-fid="${f.id}">${f.delta > 0 ? '+' : '−'}${Math.abs(f.delta)}</span>`).join('');
-    const inner = `${plabel(p.id)}${jokerBadges(p)}<b>${shownScore(p)}</b>${fl}`;
+    const inner = `${plabel(p.id)}${p.members.length > 1 ? memLine(p) : ''}${jokerBadges(p)}<b>${shownScore(p)}</b>${fl}`;
     return host ? `<button class="${cls}" style="--pc:${p.color}" data-pid="${p.id}" data-act="menu" data-id="${p.id}" title="Punkte, Zug, Joker, Handicap">${inner}</button>`
                 : `<div class="${cls}" style="--pc:${p.color}" data-pid="${p.id}">${inner}</div>`;
   }).join('') + '</div>' + (host ? playerMenu() : '');
@@ -720,12 +764,14 @@ function card() {
   if (!host && mine && !guess && !mini && c.state !== 'reveal') {
     const locked = c.locked.includes(me.pid), early = Date.now() < lockUntil;
     const held = c.state === 'open' && holdUntil > Date.now();   // Handicap: Buzzer fuer mich noch nicht frei
-    const can = c.state === 'open' && !c.pending && !locked && !buzzSent && !early && !held;
+    const notMeB = !!(mine.ans && mine.ans !== me.mid);   // Team-Modus "reihum": ein anderes Mitglied antwortet
+    const can = c.state === 'open' && !c.pending && !locked && !buzzSent && !early && !held && !notMeB;
     let label = 'BUZZ', cls = 'off';
     if (c.state === 'buzzed') { label = c.buzzer === me.pid ? 'DU!' : esc(buzzName); if (c.buzzer === me.pid) cls = 'won off'; }
     else if (locked) label = 'RAUS';
     else if (held) { label = '🐢 ' + Math.ceil((holdUntil - Date.now()) / 1000); cls = 'held off'; }
     else if (early) { label = 'ZU FRÜH'; cls = 'early off'; }
+    else if (notMeB) label = 'NICHT DU';
     else if (c.state === 'reading') label = 'WARTEN';
     else if (c.pending || buzzSent) label = '…';
     else if (can) cls = 'live';
@@ -746,13 +792,24 @@ function card() {
   }
   if (!host && mine && guess && c.state === 'reading' && c.locked.includes(me.pid)) extra += '<div class="status">Kaffeepause – du setzt bei dieser Frage aus.</div>';
 
+  // Team-Modus "reihum": nur der Antwortgeber des Teams darf antworten, die anderen im Team schauen zu
+  let teamNote = '';
+  if (!host && mine && mine.ans && c.state !== 'reveal') {
+    if (mine.ans === me.mid) teamNote = '<div class="status soft">Du antwortest bei dieser Frage für euer Team.</div>';
+    else {
+      teamNote = `<div class="status">${esc((mine.members.find(m => m.id === mine.ans) || {}).name || 'Ein Teammitglied')} antwortet bei dieser Frage für euer Team.</div>`;
+      guessBox = '';
+    }
+  }
+  const watchOnly = !!(mine && mine.ans && mine.ans !== me.mid);
+
   // Mini-Games: Spielbereich, Loesung fuer den Host, Rangliste nach der Wertung
   if (mini) {
     if (!host && mine && c.locked.includes(me.pid) && c.state !== 'reveal') {
       extra += '<div class="status">Kaffeepause – du setzt bei dieser Frage aus.</div>';
       if (c.typ === 'sortieren' && c.state === 'open') miniBox = sortPlay(c, true);   // beim Sortieren live zuschauen
     }
-    else if (c.state === 'open' && !host && mine) miniBox = c.typ === 'sortieren' ? sortPlay(c, !c.mini.sort || !c.mini.sort.order.includes(me.pid)) : c.typ === 'zuordnen' ? matchPlay(c) : geoPlay(c);
+    else if (c.state === 'open' && !host && mine) miniBox = c.typ === 'sortieren' ? sortPlay(c, watchOnly || !c.mini.sort || !c.mini.sort.order.includes(me.pid)) : watchOnly ? '' : c.typ === 'zuordnen' ? matchPlay(c) : geoPlay(c);
     else if (me.role === 'beamer' && c.state === 'open') miniBox = c.typ === 'sortieren' ? sortPlay(c, true) : c.typ === 'geo' ? '<div class="geobox"><div id="geoslot" class="geoslot"></div></div>' : '';
     else if (host && (c.state === 'reading' || c.state === 'open')) miniBox = hostMini(c);
     else if (c.state === 'reveal' && c.mini.result) miniBox = miniReveal(c);
@@ -821,7 +878,7 @@ function card() {
     ${c.question && !hidden ? `<div class="q">${esc(c.question)}</div>` : ''}
     ${rev && !hidden ? stages(c) : ''}
     ${blocked}${merr}${hostAns}${hint}
-    <div class="status">${status}</div>${cd}${extra}${glist}${play}${buzzer}${guessBox}${miniBox}
+    <div class="status">${status}</div>${cd}${extra}${teamNote}${glist}${play}${buzzer}${guessBox}${miniBox}
     <div class="btns">${btns}</div>
   </div></div>`;
 }
@@ -1211,6 +1268,8 @@ document.addEventListener('keydown', e => {
   if (e.target.id === 'adjv') { const b = document.querySelector('[data-act="adjcustom"]'); if (b) b.click(); }
 });
 document.addEventListener('input', e => {
+  if (e.target.id === 'jcode') lookupRoom();
+  if (e.target.id === 'jteam') updateTeamHint();
   if (e.target.id === 'wrange') { const w = document.getElementById('wager'); if (w) w.value = e.target.value; }
   if (e.target.id === 'wager') { const r = document.getElementById('wrange'); if (r) r.value = e.target.value; }
 });
@@ -1237,9 +1296,10 @@ document.addEventListener('click', e => {
       const code = document.getElementById('jcode').value.trim().toUpperCase();
       const name = document.getElementById('jname').value.trim();
       localStorage.setItem('quiz-look', JSON.stringify(look));
-      socket.emit('player:join', { code, name, color: look.color, avatar: look.avatar, photo: myPhoto }, r => {
+      const team = ((document.getElementById('jteam') || {}).value || '').trim();
+      socket.emit('player:join', { code, name, team, color: look.color, avatar: look.avatar, photo: myPhoto }, r => {
         if (!r.ok) return document.getElementById('err').textContent = r.error;
-        me = { role: 'player', code: r.code, token: r.token, pid: r.pid, name: r.name }; save();
+        me = { role: 'player', code: r.code, token: r.token, pid: r.pid, mid: r.mid, name: r.member || r.name, team: r.name }; save();
       });
       break;
     }
@@ -1314,6 +1374,8 @@ document.addEventListener('click', e => {
     case 'adjcustom': { const v = document.getElementById('adjv'); const n = Number(v && v.value); if (Number.isFinite(n) && n !== 0) socket.emit('host:adjust', { id: d.id, delta: n }); break; }
     case 'setpicker': socket.emit('host:setPicker', { id: d.id }); break;
     case 'theme': socket.emit('host:setSettings', { theme: d.id }); break;
+    case 'pickteam': { const i = document.getElementById('jteam'); if (i) { i.value = d.name; updateTeamHint(); } break; }
+    case 'kickm': socket.emit('host:kickMember', { id: d.id, mid: d.mid }); break;
     case 'delay': { const pl = S.players.find(x => x.id === d.id); socket.emit('host:setHandicap', { id: d.id, delay: pl && pl.delay === +d.s ? 0 : +d.s }); break; }
     case 'give': socket.emit('host:giveJoker', { id: d.id, type: d.t }); break;
     case 'take': socket.emit('host:takeJoker', { id: d.id, type: d.t }); break;
@@ -1335,3 +1397,16 @@ function fitBeamer() {
   }
 }
 if (BEAMER) addEventListener('resize', fitBeamer);
+
+/* ---------- Leertaste = Buzzer ---------- */
+// Loest dasselbe aus wie das Antippen des Buzzers (inkl. "zu frueh"-Sperre). Nicht beim Tippen in Eingabefeldern.
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || e.repeat || !me || me.role !== 'player') return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+  const b = document.querySelector('[data-buzz]');
+  if (!b) return;
+  e.preventDefault();
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+});
