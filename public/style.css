@@ -636,3 +636,18 @@ html[data-beamer] [data-act="leave"]{display:none}
 .teamchips{display:flex;flex-wrap:wrap;gap:6px}
 .chk{display:flex;gap:8px;align-items:flex-start;font-size:.95rem}
 .chk input{margin-top:.25em}
+
+/* ---------- Handy: hohe Karten nicht mehr abgeschnitten (v4.6) ---------- */
+/* Die Ueberlagerung zentriert die Karte. Ist sie hoeher als der Bildschirm, ragte sie oben und unten heraus, ohne dass man scrollen konnte. */
+.ov{align-items:safe center}
+.ov>.card{margin-block:auto;flex:0 0 auto}
+[data-theme="neon"] .ov{padding-top:46px}
+[data-theme="neon"] .card{margin-top:auto}
+@media (max-width:700px){
+  /* Prime-Time: auf schmalen Bildschirmen statt des langen Sechsecks eine Karte mit kleinen Ecken, sonst bleibt kaum Platz fuer den Text */
+  [data-theme="primetime"] .card{padding:24px 20px;clip-path:polygon(0 22px,22px 0,calc(100% - 22px) 0,100% 22px,100% calc(100% - 22px),calc(100% - 22px) 100%,22px 100%,0 calc(100% - 22px))}
+  [data-theme="primetime"] .card::before{clip-path:polygon(0 21px,21px 0,calc(100% - 21px) 0,100% 21px,100% calc(100% - 21px),calc(100% - 21px) 100%,21px 100%,0 calc(100% - 21px))}
+  [data-theme="primetime"] .card .q{font-size:clamp(1.2rem,5.6vw,1.6rem)}
+  [data-theme="future"] .card{padding:24px 22px}
+}
+[data-theme="neon"] .mbtn,[data-theme="future"] .mbtn{text-transform:none;letter-spacing:0}

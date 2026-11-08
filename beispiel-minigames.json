@@ -40,8 +40,7 @@
             }
           ],
           "anfang": "nah an der Sonne",
-          "ende": "weit weg",
-          "zeit": 25
+          "ende": "weit weg"
         },
         {
           "typ": "sortieren",
@@ -70,7 +69,6 @@
           ],
           "anfang": "größte Stadt",
           "ende": "kleinste",
-          "zeit": 20,
           "herzen": 2,
           "abwaerts": true
         },
@@ -87,7 +85,6 @@
           ],
           "anfang": "älteste",
           "ende": "neueste",
-          "zeit": 25,
           "joker": true,
           "streng": true
         }
@@ -116,8 +113,7 @@
               "links": "Spanien",
               "rechts": "Madrid"
             }
-          ],
-          "zeit": 45
+          ]
         },
         {
           "typ": "zuordnen",
@@ -143,8 +139,7 @@
               "links": "Röntgen",
               "rechts": "Röntgenstrahlen"
             }
-          ],
-          "zeit": 60
+          ]
         },
         {
           "typ": "zuordnen",
@@ -162,8 +157,7 @@
               "links": "Marzipan",
               "rechts": "Mandeln"
             }
-          ],
-          "zeit": 40
+          ]
         }
       ]
     },
@@ -179,8 +173,7 @@
           "ziel": {
             "x": 0.5,
             "y": 0.46
-          },
-          "zeit": 30
+          }
         },
         {
           "typ": "geo",
@@ -191,8 +184,7 @@
           "ziel": {
             "x": 0.73,
             "y": 0.66
-          },
-          "zeit": 30
+          }
         },
         {
           "typ": "geo",
@@ -204,7 +196,6 @@
             "x": 0.25,
             "y": 0.58
           },
-          "zeit": 30,
           "joker": true
         }
       ]

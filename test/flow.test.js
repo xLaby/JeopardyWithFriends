@@ -51,13 +51,14 @@ module.exports = async ({ url, t }) => {
 
   console.log('Schätzfrage');
   await g.pick(1, 0); await g.open();
-  A.sock.emit('player:guess', { text: '95' }); C.sock.emit('player:guess', { text: '100' }); await wait(200);
+  A.sock.emit('player:guess', { text: '95' }); C.sock.emit('player:guess', { text: '100' }); B.sock.emit('player:guess', { text: 'ungefähr hundert' }); await wait(200);
+  t.ok(g.cur().guess.guessed.length === 3 && g.cur().guess.guessed.includes(B.pid), 'Das Schätzfeld nimmt auch Text an');
   g.host.emit('host:skip'); await wait(150);
   t.ok(g.cur().state === 'review', 'Zeit beendet, Schätzungen werden aufgedeckt');
-  g.host.emit('host:revealNext'); g.host.emit('host:revealNext'); await wait(200);
-  t.ok(g.cur().state === 'judge', 'Alle Schätzungen sind aufgedeckt');
+  g.host.emit('host:revealNext'); g.host.emit('host:revealNext'); g.host.emit('host:revealNext'); await wait(200);
+  t.ok(g.cur().state === 'judge', 'Alle Schätzungen sind aufgedeckt (Text steht am Ende der Reihenfolge)');
   const first = g.cur();
-  g.host.emit('host:mark', { id: C.pid, correct: true }); g.host.emit('host:mark', { id: A.pid, correct: false }); await wait(150);
+  g.host.emit('host:mark', { id: C.pid, correct: true }); g.host.emit('host:mark', { id: A.pid, correct: false }); g.host.emit('host:mark', { id: B.pid, correct: false }); await wait(150);
   g.host.emit('host:resolve'); await wait(200);
   t.ok(g.score(C.pid) === 100 && g.cur().state === 'reveal' && first, 'Host bewertet: richtige Schätzung bekommt den Feldwert');
   g.host.emit('host:close'); await wait(150);

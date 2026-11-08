@@ -523,7 +523,7 @@ function qCard(ci, ri, q, fin) {
   if (typ === 'schaetzen') extraFields = `<div class="two"><label class="field">Einheit (z. B. €)<input type="text" data-f="einheit" data-ci="${ci}" data-ri="${ri}" maxlength="10" value="${esc(q.einheit)}"></label>
     <label class="field">Schätzzeit in s (leer = Standard)<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label></div>`;
   else if (typ === 'reveal') extraFields = `<label class="field">Dauer in s, in der das Bild scharf wird (Sound: Stufen per Knopf)<input type="text" inputmode="numeric" data-f="dauer" data-ci="${ci}" data-ri="${ri}" value="${q.dauer || 20}"></label>`;
-  else if (MINI_T.includes(typ)) extraFields = `<label class="field">${typ === 'sortieren' ? 'Zeit pro Zug in s' : 'Zeit in s'} (leer = Standard ${typ === 'geo' ? 45 : typ === 'sortieren' ? 25 : 60})<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label>`;
+  else if (MINI_T.includes(typ)) extraFields = `<label class="field">${typ === 'sortieren' ? 'Zeit pro Zug in s' : 'Zeit in s'} (leer = kein Limit)<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label>`;
   else if (fin) extraFields = `<label class="field">Antwortzeit in s (leer = Standard)<input type="text" inputmode="numeric" data-f="zeit" data-ci="${ci}" data-ri="${ri}" value="${q.zeit || ''}"></label>`;
   return `<div class="qcard ${isEmpty(q) ? 'empty' : ''}" id="q-${ci}-${ri}">
     <div class="qh"><span class="v">${head}</span>

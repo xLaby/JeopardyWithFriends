@@ -188,7 +188,7 @@ setInterval(() => {
     const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
     els.forEach(el => { el.textContent = fmtTime(left); el.classList.toggle('warn', left <= 3 && left > 0); });
     const cur = S && S.current;
-    if (cur && cur.state === 'buzzed' && left <= 3 && left > 0 && left !== lastTick) { lastTick = left; SFX.tick(); }
+    if (cur && (cur.state === 'buzzed' || cur.grace) && left <= 3 && left > 0 && left !== lastTick) { lastTick = left; SFX.tick(); }
   }
   const hb = document.querySelector('.buzz[data-hold="1"]');   // Handicap-Countdown auf dem Buzzer
   if (hb) { const l = holdUntil - Date.now(); if (l > 0) hb.textContent = '🐢 ' + Math.ceil(l / 1000); else { holdUntil = 0; render(); } }
@@ -737,8 +737,9 @@ function card() {
   else if (c.state === 'review') status = `Antworten werden aufgedeckt (${c.guess.revealed}/${c.guess.total}).`;
   else if (c.state === 'judge') status = host ? (c.guess.total ? 'Markiere pro Schätzung: Gewinner (✓) oder nicht (✗). Mehrere Gewinner sind möglich.' : 'Niemand hat geschätzt – einfach auswerten.') : 'Der Spielleiter bewertet die Schätzungen …';
   else status = resultText(c, guess);
+  if (c.grace && c.state === 'open') status = host ? 'Noch ein paar Sekunden, dann endet die Frage.' : '⏳ Gleich endet die Frage – wer noch etwas weiß, jetzt!';
 
-  if ((c.state === 'buzzed' || ((guess || mini) && c.state === 'open')) && c.left != null)
+  if ((c.state === 'buzzed' || c.state === 'open') && c.left != null)
     cd = `<div class="cdwrap ${c.timeUp ? 'over' : ''}"><span class="cd">${fmtTime(Math.ceil(c.left / 1000))}</span></div>`;
 
   if (c.buzzes && c.buzzes.length && c.state !== 'reading') {
@@ -785,7 +786,7 @@ function card() {
     else {
       const done = c.guess.guessed.includes(me.pid);
       guessBox = `<div class="guessbox"><div class="row">
-        <input type="text" id="guess" inputmode="decimal" maxlength="40" placeholder="Deine Schätzung${c.einheit ? ' in ' + esc(c.einheit) : ''}" autocomplete="off">
+        <input type="text" id="guess" enterkeyhint="send" maxlength="100" placeholder="Deine Schätzung oder Antwort${c.einheit ? ' (' + esc(c.einheit) + ')' : ''}" autocomplete="off">
         <button data-act="guess">${done ? 'Ändern' : 'Abschicken'}</button></div>
         ${done ? `<div class="status soft">Abgegeben${myGuess ? ': <b>' + esc(myGuess) + unit + '</b>' : ''}. Bis die Zeit abläuft, kannst du noch ändern.</div>` : ''}</div>`;
     }
@@ -845,7 +846,8 @@ function card() {
     if (c.state === 'reading') btns = mini ? '<button data-act="open">Mini-Game freigeben</button><button class="ghost" data-act="skip">Frage überspringen</button>' : guess || rev
       ? `<button data-act="open">${guess ? 'Schätzen freigeben' : 'Buzzer freigeben'}</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}<button class="ghost" data-act="skip">Frage überspringen</button>`
       : `<button data-act="open">Buzzer freigeben</button><button class="ghost" data-act="openshow">Buzzer + Frage freigeben</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}<button class="ghost" data-act="skip">Frage überspringen</button>`;
-    else if (c.state === 'open') btns = mini ? (c.typ === 'sortieren' ? '<button class="ghost" data-act="sortskip">Zug überspringen</button><button data-act="skip">Beenden und werten</button>' : '<button data-act="skip">Zeit beenden</button>') : guess ? `<button data-act="skip">Zeit beenden</button>${snd}` : `${showBtn}${more}${snd}<button class="ghost" data-act="skip">Niemand weiß es</button>`;
+    else if (c.state === 'open') { const gr = `<button class="ghost" data-act="grace" ${c.grace ? 'disabled' : ''}>${c.grace ? 'Läuft …' : 'Noch 5 Sekunden'}</button>`;
+      btns = mini ? (c.typ === 'sortieren' ? '<button class="ghost" data-act="sortskip">Zug überspringen</button>' + gr + '<button data-act="skip">Beenden und werten</button>' : gr + '<button data-act="skip">Zeit beenden</button>') : guess ? `${gr}<button data-act="skip">Zeit beenden</button>${snd}` : `${showBtn}${more}${snd}${gr}<button class="ghost" data-act="skip">Niemand weiß es</button>`; }
     else if (c.state === 'buzzed') btns = `${showBtn}<button class="ok" data-act="judge" data-v="1">Richtig, +${gain(c, c.buzzer)}</button><button class="bad ${c.timeUp ? 'hl' : ''}" data-act="judge" data-v="0">Falsch, −${penalty(c, c.buzzer, v)}</button>${snd}`;
     else if (c.state === 'review') btns = `<button data-act="revealNext">Nächste Antwort aufdecken (${c.guess.revealed + 1}/${c.guess.total})</button>`;
     else if (c.state === 'judge') { const ok = c.guess.list.every(g => typeof (c.guess.marks || {})[g.pid] === 'boolean'); btns = `<button data-act="resolve" ${ok ? '' : 'disabled'}>Auswerten</button>`; }
@@ -1179,7 +1181,7 @@ function finaleCard() {
       ? `<button class="ghost" data-act="snd" data-on="1">${c.audio.n ? 'Sound neu starten' : 'Sound abspielen'}</button>${c.audio.on ? '<button class="ghost" data-act="snd" data-on="0">Sound stoppen</button>' : ''}` : '';
     if (c.state === 'intro') btns = `<button data-act="open">Frage zeigen</button>${c.hasSound ? '<button class="ghost" data-act="preview">Sound vorhören (nur bei dir)</button>' : ''}`;
     else if (c.state === 'decide') btns = `<button data-act="skip">Weiter (Entscheidung beenden)</button>${snd}`;
-    else if (c.state === 'play') btns = `<button data-act="skip">Zeit beenden</button>${snd}`;
+    else if (c.state === 'play') btns = `<button class="ghost" data-act="grace" ${c.grace ? 'disabled' : ''}>${c.grace ? 'Läuft …' : 'Noch 5 Sekunden'}</button><button data-act="skip">Zeit beenden</button>${snd}`;
     else if (c.state === 'review') { const r = c.review; btns = `<button data-act="revealNext">Antwort von ${esc(pname(r.order[r.revealed]))} aufdecken (${r.revealed + 1}/${r.order.length})</button>`; }
     else if (c.state === 'judge') { const r = c.review; const ok = r.order.every(pid => typeof r.marks[pid] === 'boolean'); btns = `<button data-act="resolve" ${ok ? '' : 'disabled'}>Auswerten – Einsätze aufdecken</button>`; }
     else btns = `<button data-act="close">${c.idx + 1 >= c.total ? 'Zur Siegerehrung' : 'Nächste Finalfrage'}</button>`;
@@ -1344,6 +1346,7 @@ document.addEventListener('click', e => {
     case 'sref': mySort.ref = mySort.ref === d.id ? null : d.id; render(); break;
     case 'splace': if (mySort.item && mySort.ref && (d.side === 'left' || d.side === 'right')) { socket.emit('player:sortPlace', { item: mySort.item, ref: mySort.ref, side: d.side }); mySort.item = null; mySort.ref = null; render(); } break;
     case 'sortskip': socket.emit('host:sortSkip'); break;
+    case 'grace': socket.emit('host:grace', { secs: 5 }); break;
     case 'zoomimg': showZoom(d.src); break;
     case 'mleft': { const m = myMini; if (!m || m.done) break; m.sel = m.sel === d.id ? null : d.id; render(); break; }
     case 'mright': {
