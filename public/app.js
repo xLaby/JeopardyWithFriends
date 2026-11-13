@@ -1,6 +1,11 @@
 const socket = io();
 const $app = document.getElementById('app');
 const LS = 'quiz-session';
+// Vibration (Handy): kurze Rueckmeldung beim Buzzern, wenn man dran ist und bei richtig/falsch. Im Kopfbereich umschaltbar.
+const canVibe = typeof navigator.vibrate === 'function';
+let haptic = (() => { try { return localStorage.getItem('quiz-haptic') !== '0'; } catch (e) { return true; } })();
+const vibe = pat => { if (canVibe && haptic && me && me.role === 'player' && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) try { navigator.vibrate(pat); } catch (e) {} };
+let rulesOpen = (() => { try { return localStorage.getItem('quiz-rules') !== '0'; } catch (e) { return true; } })();   // Regelkarte in der Lobby: offen, bis man sie einmal zuklappt
 const BEAMER = document.documentElement.hasAttribute('data-beamer');   // beamer.html: reiner Zuschauer fuer Fernseher oder Stream
 const beamerCode = (new URLSearchParams(location.search).get('code') || '').toUpperCase();
 let me = BEAMER ? (beamerCode ? { role: 'beamer', code: beamerCode } : null) : JSON.parse(localStorage.getItem(LS) || 'null'); // {role, code, token, pid, name}
@@ -225,12 +230,12 @@ function applyTheme(st) {
 socket.on('state', s => { const prev = S; S = s; applyTheme(s); effects(prev, s); render(); });
 
 // Grosser Name in Spielerfarbe, wenn jemand buzzert
-function buzzFlash(pid) {
+function buzzFlash(pid, member) {
   const pl = pOf(pid); if (!pl) return;
   document.querySelectorAll('.buzzflash').forEach(e => e.remove());
   const el = document.createElement('div');
   el.className = 'buzzflash'; el.style.setProperty('--pc', pl.color);
-  el.innerHTML = `<div class="bf">${avHtml(pl)}${esc(pl.name)}</div>`;
+  el.innerHTML = `<div class="bf">${avHtml(pl)}${esc(pl.name)}</div>${member ? `<div class="bm">${esc(member)}</div>` : ''}`;   // Team-Modus: wer im Team gebuzzert hat
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 1400);
 }
@@ -283,16 +288,16 @@ function effects(prev, s) {
       coffeePick = false; audioBlocked = false; buzzSent = false; myGuess = ''; previewing = false; pixStage = -1;
       SFX.pick(); if (c.joker) setTimeout(SFX.joker, 350);
     } else {
-      if (c.state === 'buzzed' && p.state !== 'buzzed') { SFX.buzz(); shakeCard = true; buzzFlash(c.buzzer); lastTick = 0; }
+      if (c.state === 'buzzed' && p.state !== 'buzzed') { SFX.buzz(); shakeCard = true; buzzFlash(c.buzzer, c.buzzMember); lastTick = 0; if (c.buzzer === me.pid) vibe([70, 40, 70]); }
       if (c.state === 'reveal' && p.state !== 'reveal') {
-        if (c.result === 'correct') { SFX.right(); cardFx = 'good'; if (c.reward) setTimeout(() => confetti(70, 2500), 150); }
+        if (c.result === 'correct') { SFX.right(); cardFx = 'good'; if (c.reward) setTimeout(() => confetti(70, 2500), 150); if (c.winners && c.winners.includes(me.pid)) vibe(90); }
         else if (c.result === 'none') { SFX.wrong(); cardFx = 'badfx'; }
       }
-      else if (p.state === 'buzzed' && c.state === 'open') { SFX.wrong(); cardFx = 'badfx'; }
+      else if (p.state === 'buzzed' && c.state === 'open') { SFX.wrong(); cardFx = 'badfx'; if (p.buzzer === me.pid) vibe([120, 60, 120]); }
       if (c.state === 'open' && c.mini && c.mini.sort && p.mini && p.mini.sort) {   // Sortieren: Ergebnis des letzten Zugs, Zug an mich
         const a = c.mini.sort, b = p.mini.sort;
         if (a.last && (!b.last || a.last.n > b.last.n)) (a.last.ok ? SFX.right : SFX.wrong)();
-        else if (me && a.turn === me.pid && b.turn !== me.pid) SFX.pick();
+        else if (me && a.turn === me.pid && b.turn !== me.pid) { SFX.pick(); vibe(45); }
       }
       if (c.state === 'review' && p.state !== 'review') SFX.ding();
       if (c.timeUp && !p.timeUp) SFX.timeup();
@@ -567,6 +572,27 @@ function viewBeamerLobby() {
     <div class="panel" style="text-align:left"><h2>${teamWord()} (${S.players.length})</h2>${playerList()}</div>
   </div>`;
 }
+// Regelkarte "So spielt ihr": kurz und passend zu den eingestellten Funktionen
+function rulesHtml() {
+  const st = (S && S.settings) || {}, li = (icon, title, text) => `<li><b>${icon} ${title}</b><span>${text}</span></li>`;
+  return `<ul class="rulelist">
+    ${li('🔔', 'Buzzer', 'Wenn der Buzzer leuchtet, antippen (am Rechner geht auch die Leertaste). Wer zu früh drückt, ist kurz gesperrt. Der Schnellste antwortet: richtig bringt den vollen Wert, falsch kostet die Hälfte und sperrt dich für diese Frage.')}
+    ${li('🎯', 'Schätzfragen', 'Schätzung oder Antwort eintippen. Bis die Zeit abläuft, kannst du sie noch ändern. Der Spielleiter bewertet.')}
+    ${li('🎮', 'Mini-Games', '<b>Sortieren:</b> reihum einen Gegenstand wählen, einen liegenden antippen und „links“ oder „rechts davon“ sagen, wer falsch liegt, verliert ein Herz. <b>Zuordnen:</b> Paare verbinden, der Rang zählt. <b>Geoguessr:</b> Pin auf die Karte, nur der Nächste bekommt Punkte.')}
+    ${st.joker > 0 ? li('🃏', 'Joker', 'Auf Joker-Feldern gewinnst du Joker. Setze einen, während die Frage vorgelesen wird (einer pro Frage): <b>Doppelt</b> verdoppelt, <b>Risiko</b> verdreifacht, kostet bei Fehlern aber den doppelten Wert, <b>Kaffeepause</b> sperrt einen Gegner.') : ''}
+    ${st.teamMode ? li('👥', 'Team', 'Ihr habt zusammen einen Punktestand und eigene Joker. ' + (st.teamAnswer === 'reihum' ? 'Pro Frage antwortet nur ein Mitglied (🎤), danach das nächste.' : 'Jeder im Team darf buzzern, der Schnellste zählt.')) : ''}
+    ${li('🏁', 'Finale', 'Am Ende setzt ihr verdeckt Punkte ein: richtig bringt den Einsatz, falsch kostet ihn.')}
+  </ul>`;
+}
+// Regeln waehrend des Spiels: eigenes Fenster, das nicht von den Neuaufbauten der Oberflaeche betroffen ist
+function showRules() {
+  const o = document.createElement('div');
+  o.className = 'ov rulesov';
+  o.innerHTML = `<div class="card"><h2 style="margin-top:0">So spielt ihr</h2>${rulesHtml()}<div class="row" style="margin-top:12px"><button data-rclose>Schließen</button></div></div>`;
+  o.onclick = e => { if (e.target === o || e.target.hasAttribute('data-rclose')) o.remove(); };
+  document.body.appendChild(o);
+}
+document.addEventListener('toggle', e => { if (e.target.id === 'rules') { rulesOpen = e.target.open; try { localStorage.setItem('quiz-rules', rulesOpen ? '1' : '0'); } catch (err) {} } }, true);
 function viewPlayerLobby() {
   $app.innerHTML = `
   <div class="wrap stack center">
@@ -574,6 +600,7 @@ function viewPlayerLobby() {
     <h2>Du bist drin, ${esc(me.name)}${S.settings.teamMode && me.team ? ` – Team ${esc(me.team)}` : ''}</h2>
     <p class="muted">Raum ${S.code}. Warte, bis der Spielleiter das Spiel startet.<br>Schalte den Ton an, es gibt Sounds.</p>
     <div class="panel" style="text-align:left"><h2>${teamWord()} (${S.players.length})</h2>${playerList()}</div>
+    <details class="panel rules" id="rules" style="text-align:left" ${rulesOpen ? 'open' : ''}><summary>So spielt ihr</summary>${rulesHtml()}</details>
     <div class="panel" style="text-align:left"><button class="ghost" data-act="looktoggle">${lookOpen ? 'Fertig' : 'Farbe und Avatar ändern'}</button>${lookOpen ? lookPicker() : ''}</div>
     <button class="ghost" data-act="leave">Raum verlassen</button>
   </div>`;
@@ -647,6 +674,8 @@ function hud() {
       ${host && S.canUndo ? `<button class="ghost undo" data-act="undo" title="${esc(S.canUndo)}">↶ Rückgängig</button>` : ''}
       ${host ? '<button class="ghost" data-act="beamer" title="Zuschauer-Ansicht für Fernseher oder Stream in neuem Tab öffnen">Beamer</button>' : ''}
       ${host ? '<button class="ghost" data-act="export" title="Spielstand als Datei herunterladen">Spielstand sichern</button>' : ''}
+      ${!host && !BEAMER ? '<button class="ghost" data-act="rules">Regeln</button>' : ''}
+      ${!host && !BEAMER && canVibe ? `<button class="ghost" data-act="haptic" title="Vibration beim Buzzern und bei Ergebnissen">${haptic ? '📳 an' : '📳 aus'}</button>` : ''}
       <button class="ghost" data-act="mute">${muted ? 'Ton aus' : 'Ton an'}</button>
       ${host ? '<button class="ghost" data-act="end">Beenden</button>' : ''}</div></div>
   ${S.hostOnline ? '' : '<div class="banner">Der Spielleiter ist gerade nicht verbunden.</div>'}`;
@@ -721,7 +750,7 @@ function card() {
   const guess = c.typ === 'schaetzen', rev = c.typ === 'reveal';
   const mini = c.typ === 'sortieren' || c.typ === 'zuordnen' || c.typ === 'geo';
   const img = c.state === 'reveal' && c.ansBild ? c.ansBild : c.bild;
-  const buzzName = c.buzzer ? pname(c.buzzer) : '';
+  const buzzName = c.buzzer ? pname(c.buzzer) + (c.buzzMember ? ` (${c.buzzMember})` : '') : '';
   const unit = c.einheit ? ' ' + esc(c.einheit) : '';
   let status = '', btns = '', extra = '', play = '', cd = '', buzzer = '', guessBox = '', glist = '', miniBox = '';
 
@@ -784,11 +813,11 @@ function card() {
   if (!host && mine && guess && c.state === 'open') {
     if (c.locked.includes(me.pid)) extra += '<div class="status">Kaffeepause – du setzt bei dieser Frage aus.</div>';
     else {
-      const done = c.guess.guessed.includes(me.pid);
+      const done = c.guess.guessed.includes(me.pid), tg = c.guess.mine, byOther = !!(tg && tg.by && tg.by !== me.name);
       guessBox = `<div class="guessbox"><div class="row">
         <input type="text" id="guess" enterkeyhint="send" maxlength="100" placeholder="Deine Schätzung oder Antwort${c.einheit ? ' (' + esc(c.einheit) + ')' : ''}" autocomplete="off">
         <button data-act="guess">${done ? 'Ändern' : 'Abschicken'}</button></div>
-        ${done ? `<div class="status soft">Abgegeben${myGuess ? ': <b>' + esc(myGuess) + unit + '</b>' : ''}. Bis die Zeit abläuft, kannst du noch ändern.</div>` : ''}</div>`;
+        ${done ? `<div class="status soft">${byOther ? `Euer Team hat <b>${esc(tg.text)}${unit}</b> abgegeben (${esc(tg.by)}).` : `Abgegeben${myGuess ? ': <b>' + esc(myGuess) + unit + '</b>' : tg ? ': <b>' + esc(tg.text) + unit + '</b>' : ''}.`} Bis die Zeit abläuft, kannst du noch ändern.</div>` : ''}</div>`;
     }
   }
   if (!host && mine && guess && c.state === 'reading' && c.locked.includes(me.pid)) extra += '<div class="status">Kaffeepause – du setzt bei dieser Frage aus.</div>';
@@ -802,6 +831,7 @@ function card() {
       guessBox = '';
     }
   }
+  if (!host && mine && mini && c.state === 'open' && c.mini.mine && c.mini.mine.done && c.mini.mine.by && c.mini.mine.by !== me.name) teamNote += `<div class="status soft">${esc(c.mini.mine.by)} hat für euer Team abgegeben.</div>`;
   const watchOnly = !!(mine && mine.ans && mine.ans !== me.mid);
 
   // Mini-Games: Spielbereich, Loesung fuer den Host, Rangliste nach der Wertung
@@ -944,7 +974,7 @@ function sortLast(c) {
   const s = c.mini.sort, l = s.last; if (!l) return '';
   if (l.timeout) return `<div class="slast bad">${plabel(l.pid)}: Zeit abgelaufen, −1 ❤️</div>`;
   const all = [...s.line, ...s.pool], name = id => { const it = all.find(x => x.id === id); return it ? (it.text || 'Bild') : '?'; };
-  return `<div class="slast ${l.ok ? 'ok' : 'bad'}">${plabel(l.pid)}: „${esc(name(l.item))}“ ${l.side === 'left' ? 'links' : 'rechts'} von „${esc(name(l.ref))}“ – ${l.ok ? 'richtig ✓' : 'falsch, −1 ❤️'}</div>`;
+  return `<div class="slast ${l.ok ? 'ok' : 'bad'}">${plabel(l.pid)}${l.by ? ` (${esc(l.by)})` : ''}: „${esc(name(l.item))}“ ${l.side === 'left' ? 'links' : 'rechts'} von „${esc(name(l.ref))}“ – ${l.ok ? 'richtig ✓' : 'falsch, −1 ❤️'}</div>`;
 }
 // Alle sehen die Reihe live, nur wer dran ist darf waehlen (spectate = Zuschauer wie Spielleiter oder Kaffeepause)
 function sortPlay(c, spectate) {
@@ -1254,7 +1284,7 @@ document.addEventListener('pointerdown', e => {
   if (el.getAttribute('aria-disabled') === 'false') {
     buzzSent = true;
     socket.emit('player:buzz', { elapsed: Math.round(performance.now() - openAt) });
-    if (navigator.vibrate) navigator.vibrate(30);
+    vibe(30);
     render();
   } else if (c.state === 'reading' || (c.state === 'open' && Date.now() < lockUntil)) {
     lockUntil = Date.now() + 1000;
@@ -1305,6 +1335,8 @@ document.addEventListener('click', e => {
       });
       break;
     }
+    case 'haptic': haptic = !haptic; try { localStorage.setItem('quiz-haptic', haptic ? '1' : '0'); } catch (e) {} if (haptic) vibe(30); render(); break;
+    case 'rules': showRules(); break;
     case 'beamer': window.open('/beamer.html?code=' + S.code, '_blank'); break;
     case 'beamerjoin': { const code = document.getElementById('bcode').value.trim().toUpperCase(); if (code) { me = { role: 'beamer', code }; tryRejoin(); } break; }
     case 'copy': navigator.clipboard && navigator.clipboard.writeText(d.text); el.textContent = 'Kopiert'; break;

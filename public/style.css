@@ -651,3 +651,14 @@ html[data-beamer] [data-act="leave"]{display:none}
   [data-theme="future"] .card{padding:24px 22px}
 }
 [data-theme="neon"] .mbtn,[data-theme="future"] .mbtn{text-transform:none;letter-spacing:0}
+
+/* ---------- Regelkarte, Teammitglied beim Buzzern (v4.7) ---------- */
+.rulelist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:12px}
+.rulelist li{display:grid;gap:3px;font-size:.92rem;line-height:1.4}
+.rulelist li>b{font-family:var(--display);font-weight:400;font-size:1.02rem;color:var(--gold-l)}
+.rulelist li span b{color:var(--cream)}
+details.rules>summary{cursor:pointer;font-family:var(--display);font-size:1.2rem;color:var(--gold-l);list-style-position:inside}
+details.rules[open]>summary{margin-bottom:6px}
+.rulesov .card{max-width:520px}
+.buzzflash{flex-direction:column}
+.buzzflash .bm{font-family:var(--cond);font-size:clamp(1.4rem,5vw,3.2rem);color:#fff;opacity:.92;margin-top:.15em;text-align:center;text-shadow:0 2px 14px rgba(0,0,0,.7)}

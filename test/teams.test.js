@@ -5,11 +5,15 @@ const { wait, ack, connect } = require('./helpers');
 const PKG = { titel: 'T', werte: [100, 200, 300], kategorien: [{ name: 'A', fragen: [
   { frage: 'f1', antwort: 'a1' }, { frage: 'f2', antwort: 'a2' }, { frage: 'f3', antwort: 'a3' }] }] };
 
-async function makeRoom(url, settings) {
+const PKG2 = { titel: 'T', werte: [100, 200], kategorien: [{ name: 'A', fragen: [
+  { typ: 'schaetzen', frage: 'Wie viel?', antwort: '100', einheit: '€' },
+  { typ: 'zuordnen', frage: 'Paare', paare: [{ links: 'DE', rechts: 'Berlin' }, { links: 'FR', rechts: 'Paris' }] }] }] };
+
+async function makeRoom(url, settings, pkg = PKG) {
   const host = await connect(url), g = { host, HS: null, url };
   host.on('state', s => { g.HS = s; });
   const h = await ack(host, 'host:create'); g.code = h.code; g.token = h.token;
-  await ack(host, 'host:setQuestions', PKG);
+  await ack(host, 'host:setQuestions', pkg);
   host.emit('host:setSettings', { joker: 0, comeback: 0, ...settings }); await wait(150);
   g.join = async (name, team, extra = {}) => {
     const sock = await connect(url), pl = { name, sock, S: null };
@@ -50,10 +54,11 @@ module.exports = async ({ url, t }) => {
   await g.pick(0); await g.open();
   anna.sock.emit('player:buzz', { elapsed: 300 }); basti.sock.emit('player:buzz', { elapsed: 200 }); cleo.sock.emit('player:buzz', { elapsed: 250 }); await wait(500);
   t.ok(g.cur().state === 'buzzed' && g.cur().buzzer === anna.pid, 'Schnellster Buzz zählt für das Team (hier Basti für Team Rot)');
+  t.ok(g.cur().buzzMember === 'Basti' && anna.S.current.buzzMember === 'Basti', 'Der Zustand nennt, welches Mitglied gebuzzert hat (für Spieler und Spielleiter)');
   g.host.emit('host:judge', { correct: false }); await wait(150);
   t.ok(g.team('Rot').score === -50 && g.cur().locked.includes(anna.pid), 'Falsch: das ganze Team verliert Punkte und ist gesperrt');
   basti.sock.emit('player:buzz', { elapsed: 50 }); anna.sock.emit('player:buzz', { elapsed: 60 }); cleo.sock.emit('player:buzz', { elapsed: 400 }); await wait(500);
-  t.ok(g.cur().buzzer === cleo.pid, 'Auch das zweite Teammitglied kann nicht buzzern, wenn das Team gesperrt ist');
+  t.ok(g.cur().buzzer === cleo.pid && g.cur().buzzMember === '', 'Auch das zweite Teammitglied kann nicht buzzern, wenn das Team gesperrt ist (Einzelteam: kein Mitgliedsname)');
   g.host.emit('host:judge', { correct: true }); await wait(150);
   t.ok(g.team('Blau').score === 100, 'Richtig: Punkte gehen aufs Team');
   g.host.emit('host:close'); await wait(150);
@@ -107,4 +112,24 @@ module.exports = async ({ url, t }) => {
   b.sock.emit('player:buzz', { elapsed: 100 }); await wait(500);
   t.ok(r.cur().buzzer === a.pid, 'Das einspringende Mitglied kann buzzern');
   r.host.close(); b.sock.close(); c.sock.close();
+
+  console.log('Team-Modus: wer im Team hat abgegeben');
+  const q = await makeRoom(url, { teamMode: true, teamAnswer: 'alle' }, PKG2);
+  const qa = await q.join('Anna', 'Rot', { color: 0, avatar: 1 }), qb = await q.join('Basti', 'Rot'), qc = await q.join('Cleo', 'Blau', { color: 3, avatar: 2 });
+  await wait(200); q.host.emit('host:start'); await wait(200);
+  await q.pick(0); await q.open();
+  t.ok(qa.S.current.guess.mine === null, 'Vor der ersten Abgabe gibt es nichts');
+  qa.sock.emit('player:guess', { text: '90' }); await wait(200);
+  t.ok(qb.S.current.guess.mine && qb.S.current.guess.mine.text === '90' && qb.S.current.guess.mine.by === 'Anna', 'Das andere Teammitglied sieht, was das Team abgegeben hat und von wem');
+  qb.sock.emit('player:guess', { text: '95' }); await wait(200);
+  t.ok(qa.S.current.guess.mine.text === '95' && qa.S.current.guess.mine.by === 'Basti', 'Überschreibt jemand, sehen es alle im Team');
+  qc.sock.emit('player:guess', { text: '100' }); await wait(200);
+  t.ok(qc.S.current.guess.mine.by === '' && !qa.S.current.guess.mine.text.includes('100'), 'Ein Einzelteam hat keinen Mitgliedsnamen, fremde Abgaben bleiben verborgen');
+  q.host.emit('host:skip'); await wait(150); q.host.emit('host:revealNext'); q.host.emit('host:revealNext'); await wait(150);
+  q.host.emit('host:mark', { id: qa.pid, correct: false }); q.host.emit('host:mark', { id: qc.pid, correct: true }); q.host.emit('host:resolve'); await wait(150); q.host.emit('host:close'); await wait(150);
+  await q.pick(1); await q.open();
+  const L = qa.S.current.mini.left, Rr = qa.S.current.mini.right, id = (list, txt) => list.find(x => x.text === txt).id;
+  qb.sock.emit('player:mini', { ans: { [id(L, 'DE')]: id(Rr, 'Berlin'), [id(L, 'FR')]: id(Rr, 'Paris') }, done: true }); await wait(250);
+  t.ok(qa.S.current.mini.mine && qa.S.current.mini.mine.done === true && qa.S.current.mini.mine.by === 'Basti', 'Mini-Games: das Team sieht, wer abgegeben hat');
+  q.host.close(); qa.sock.close(); qb.sock.close(); qc.sock.close();
 };
